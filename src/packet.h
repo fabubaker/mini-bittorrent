@@ -7,7 +7,7 @@
 /*******************************************/
 
 #ifndef PACKET_H
-#define
+#define PACKET_H
 
 typedef struct packet {
   char  type;
