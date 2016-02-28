@@ -6,30 +6,11 @@
 /* @author Malek Anabtawi, Fadhil Abubaker              */
 /********************************************************/
 
-#include <stdio.h>
-#include <ctype.h>
-#include <string.h>
-#include "chunk.h"
-#include "ds.h"
-
-#define MAX_NUM_HASH    74 //Maximum possible number of chunks in a packet
-#define WHOHAS_HEADER   16 //Number of bytes in the header of WHOHAS
-#define WHOHAS_CHUNK    20 //Number of bytes in a WHOHAS hash
-#define MAGIC_NUMBER    15441 //The magic number
-#define VERSION_NUMBER  1 //The version number
-#define WHOHAS_TYPE     0 //The packet type for WHOHAS
-#define PACKET_LENGTH   1500 //Maximum packet length
-
-struct temp_info{
-    uint8_t buf[PACKET_LENGTH];
-    int pos;
-};
-
-typedef struct temp_info temp_info;
+#include "packet.h"
 
 void mmemcat(temp_info *tempRequest, uint8_t *binaryNumber, int size){
     memmove(tempRequest->buf + tempRequest->pos, binaryNumber, size);
-    tempRequest->pos += size; 
+    tempRequest->pos += size;
 }
 
 /**
@@ -66,7 +47,6 @@ void hex2binary(char *hex, int len, uint8_t*buf) {
     }
 }
 
-//Stolen as shit
 void dec2hex2binary(int decimalNumber, int bytesNeeded, uint8_t* binaryNumber){
 
     int quotient;
@@ -97,7 +77,7 @@ void dec2hex2binary(int decimalNumber, int bytesNeeded, uint8_t* binaryNumber){
  *      1. myHead: Pre-processed linked list. The head contains the number of
  *      chunks and a first node, which corresponds to the first chunk.
  */
-uint8_t** gen_WHOHAS(ll *myHead){
+void gen_WHOHAS(ll *myHead){
 
     int numHashes = myHead->count;
     int numPacket = (numHashes / MAX_NUM_HASH) + 1;
@@ -116,7 +96,7 @@ uint8_t** gen_WHOHAS(ll *myHead){
     uint8_t ackNumber[4] = {0,0,0,0};
     uint8_t padding[3] = {0,0,0};
     uint8_t numberHashes[1];
-    
+
     while(packCounter < numPacket){
         if(numPacket == packCounter + 1){
             tempNumHashes = numHashes;
@@ -126,7 +106,7 @@ uint8_t** gen_WHOHAS(ll *myHead){
 
         memset(tempRequest.buf, 0, PACKET_LENGTH);
         tempRequest.pos = 0;
-        
+
         dec2hex2binary(MAGIC_NUMBER, 4, magicNumber);
         dec2hex2binary(VERSION_NUMBER, 2, versionNumber);
         dec2hex2binary(WHOHAS_TYPE, 2, packetType);
@@ -149,7 +129,7 @@ uint8_t** gen_WHOHAS(ll *myHead){
             temp = temp->next;
         }
 
-        strcpy(myRequests[packCounter], tempRequest.buf);
+        memcpy(myRequests[packCounter], tempRequest.buf, PACKET_LENGTH);
         packCounter++;
         numHashes -= MAX_NUM_HASH;
     }

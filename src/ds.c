@@ -8,7 +8,7 @@
 
 #include "ds.h"
 
-/* Linked list for storing characters */
+/* Linked list for storing bytes */
 
 ll* create_ll()
 {
