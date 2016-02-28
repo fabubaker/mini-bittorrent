@@ -13,7 +13,7 @@ TESTBINS        = test_debug test_input_buffer
 .c.o:
 	$(CC) $(TESTDEFS) -c $(CFLAGS) $<
 
-# Explit build and testing targets
+# Explicit build and testing targets
 
 all: ${BINS} ${TESTBINS}
 
