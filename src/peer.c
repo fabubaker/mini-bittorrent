@@ -21,7 +21,14 @@
 #include "bt_parse.h"
 #include "input_buffer.h"
 
+/* Prototypes */
+
 void peer_run(bt_config_t *config);
+void process_inbound_udp(int sock);
+void process_get(char *chunkfile, char *outputfile);
+void handle_user_input(char *line, void *cbdata);
+
+/* Definitions */
 
 int main(int argc, char **argv) {
   bt_config_t config;
@@ -36,6 +43,7 @@ int main(int argc, char **argv) {
   strcpy(config.has_chunk_file, "haschunks");
 #endif
 
+  /* Parse the cmd line tokens */
   bt_parse_command_line(&config);
 
 #ifdef DEBUG
@@ -48,6 +56,58 @@ int main(int argc, char **argv) {
   return 0;
 }
 
+/**************************************************************/
+/* @brief Given a config struct, begin operating the BT peer. */
+/* @param config The config file of the peer.                 */
+/**************************************************************/
+void peer_run(bt_config_t *config) {
+  int sock;
+  struct sockaddr_in myaddr;
+  fd_set readfds;
+  struct user_iobuf *userbuf;
+
+  /* Create a buffer to handle user inputs */
+  if ((userbuf = create_userbuf()) == NULL) {
+    perror("peer_run could not allocate userbuf");
+    exit(-1);
+  }
+
+  if ((sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP)) == -1) {
+    perror("peer_run could not create socket");
+    exit(-1);
+  }
+
+  bzero(&myaddr, sizeof(myaddr));
+  myaddr.sin_family = AF_INET;
+  myaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+  myaddr.sin_port = htons(config->myport);
+
+  if (bind(sock, (struct sockaddr *) &myaddr, sizeof(myaddr)) == -1) {
+    perror("peer_run could not bind socket");
+    exit(-1);
+  }
+
+  //  spiffy_init(config->identity, (struct sockaddr *)&myaddr, sizeof(myaddr));
+
+  while (1) {
+    int nfds;
+    FD_SET(STDIN_FILENO, &readfds);
+    FD_SET(sock, &readfds);
+
+    nfds = select(sock+1, &readfds, NULL, NULL, NULL);
+
+    if (nfds > 0) {
+      if (FD_ISSET(sock, &readfds)) {
+  process_inbound_udp(sock);
+      }
+
+      if (FD_ISSET(STDIN_FILENO, &readfds)) {
+  process_user_input(STDIN_FILENO, userbuf, handle_user_input,
+         "Currently unused");
+      }
+    }
+  }
+}
 
 void process_inbound_udp(int sock) {
   #define BUFLEN 1500
@@ -79,55 +139,6 @@ void handle_user_input(char *line, void *cbdata) {
   if (sscanf(line, "GET %120s %120s", chunkf, outf)) {
     if (strlen(outf) > 0) {
       process_get(chunkf, outf);
-    }
-  }
-}
-
-
-void peer_run(bt_config_t *config) {
-  int sock;
-  struct sockaddr_in myaddr;
-  fd_set readfds;
-  struct user_iobuf *userbuf;
-
-  if ((userbuf = create_userbuf()) == NULL) {
-    perror("peer_run could not allocate userbuf");
-    exit(-1);
-  }
-
-  if ((sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP)) == -1) {
-    perror("peer_run could not create socket");
-    exit(-1);
-  }
-
-  bzero(&myaddr, sizeof(myaddr));
-  myaddr.sin_family = AF_INET;
-  myaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-  myaddr.sin_port = htons(config->myport);
-
-  if (bind(sock, (struct sockaddr *) &myaddr, sizeof(myaddr)) == -1) {
-    perror("peer_run could not bind socket");
-    exit(-1);
-  }
-
-  spiffy_init(config->identity, (struct sockaddr *)&myaddr, sizeof(myaddr));
-
-  while (1) {
-    int nfds;
-    FD_SET(STDIN_FILENO, &readfds);
-    FD_SET(sock, &readfds);
-
-    nfds = select(sock+1, &readfds, NULL, NULL, NULL);
-
-    if (nfds > 0) {
-      if (FD_ISSET(sock, &readfds)) {
-  process_inbound_udp(sock);
-      }
-
-      if (FD_ISSET(STDIN_FILENO, &readfds)) {
-  process_user_input(STDIN_FILENO, userbuf, handle_user_input,
-         "Currently unused");
-      }
     }
   }
 }
