@@ -7,18 +7,52 @@
 /********************************************************/
 
 #include <stdio.h>
+#include <ctype.h>
 #include "chunk.h"
 
 #define MAX_NUM_HASH	74 //Maximum possible number of chunks in a packet
-#define WHOHAS_HEADER	20 //Number of bytes in the header of WHOHAS
+#define WHOHAS_HEADER	16 //Number of bytes in the header of WHOHAS
 #define WHOHAS_CHUNK	20 //Number of bytes in a WHOHAS hash
 
+/**
+ * converts the binary char string str to ascii format. the length of
+ * ascii should be 2 times that of str
+ */
+void binary2hex(uint8_t *buf, int len, char *hex) {
+	int i=0;
+	for(i=0;i<len;i++) {
+		sprintf(hex+(i*2), "%.2x", buf[i]);
+	}
+	hex[len*2] = 0;
+}
+
+/**
+ *Ascii to hex conversion routine
+ */
+static uint8_t _hex2binary(char hex)
+{
+  hex = toupper(hex);
+  uint8_t c = ((hex <= '9') ? (hex - '0') : (hex - ('A' - 0x0A)));
+  return c;
+}
+
+/**
+ * converts the ascii character string in "ascii" to binary string in "buf"
+ * the length of buf should be atleast len / 2
+ */
+void hex2binary(char *hex, int len, uint8_t*buf) {
+	int i = 0;
+	for(i=0;i<len;i+=2) {
+		buf[i/2] = 	_hex2binary(hex[i]) << 4
+      | _hex2binary(hex[i+1]);
+	}
+}
 
 //Stolen as shit
-void dec2hex2binary(int decimalNumber, int bytesNeeded, uint8_t binaryNumber){
+void dec2hex2binary(int decimalNumber, int bytesNeeded, uint8_t* binaryNumber){
 
-    int remainder,quotient;
-    int i,temp;
+    int quotient;
+    int i, temp;
     char hexadecimalNumber[bytesNeeded];
     quotient = decimalNumber;
 
@@ -61,8 +95,8 @@ char** gen_WHOHAS(ll *myHead){
 */
 
 int main(){
-	uint8_t *magicNumber[2];
-	dec2hex2binary("15441", 4, magicNumber);
+	uint8_t magicNumber[2];
+	dec2hex2binary(15441, 4, magicNumber);
 	printf("My number: %02x and %02x", magicNumber[0], magicNumber[1]);
 	return 0;
 }
