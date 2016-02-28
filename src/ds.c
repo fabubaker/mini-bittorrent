@@ -35,6 +35,8 @@ void remove_ll(ll* list)
       free(current);
       current = next;
     }
+
+  free(list);
 }
 
 void add_node(ll* list, uint8_t* data, size_t n)
@@ -83,6 +85,11 @@ int main()
   add_node(test1, buf1, 200);
   add_node(test1, buf2, 200);
   add_node(test1, buf3, 200);
+  add_node(test1, buf3, 200);
+  add_node(test1, buf3, 200);
+  add_node(test1, buf3, 200);
+  add_node(test1, buf3, 200);
+  add_node(test1, buf3, 200);
 
   cur = test1->first;
 
@@ -91,6 +98,8 @@ int main()
       cur = cur->next;
       /* Check in GDB values of cur->data */
     }
+
+  remove_ll(test1);
 }
 #endif
 
