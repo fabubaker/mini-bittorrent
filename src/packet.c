@@ -20,6 +20,18 @@
 #define WHOHAS_TYPE     0 //The packet type for WHOHAS
 #define PACKET_LENGTH   1500 //Maximum packet length
 
+struct temp_info{
+    uint8_t buf[PACKET_LENGTH];
+    int pos;
+};
+
+typedef struct temp_info temp_info;
+
+void mmemcat(temp_info *tempRequest, uint8_t *binaryNumber, int size){
+    memmove(tempRequest->buf + tempRequest->pos, binaryNumber, size);
+    tempRequest->pos += size; 
+}
+
 /**
  * converts the binary char string str to ascii format. the length of
  * ascii should be 2 times that of str
@@ -91,9 +103,9 @@ uint8_t** gen_WHOHAS(ll *myHead){
     int numPacket = (numHashes / MAX_NUM_HASH) + 1;
     int packCounter = 0;
     int tempNumHashes;
-    node *temp = myHead->first;
     uint8_t myRequests[numPacket][PACKET_LENGTH];
-    uint8_t tempRequest[PACKET_LENGTH];
+    node *temp = myHead->first;
+    temp_info tempRequest;
 
     uint8_t magicNumber[2];
     uint8_t versionNumber[1];
@@ -112,8 +124,9 @@ uint8_t** gen_WHOHAS(ll *myHead){
             tempNumHashes = MAX_NUM_HASH;
         }
 
-        memset(tempRequest, 0, PACKET_LENGTH);
-
+        memset(tempRequest.buf, 0, PACKET_LENGTH);
+        tempRequest.pos = 0;
+        
         dec2hex2binary(MAGIC_NUMBER, 4, magicNumber);
         dec2hex2binary(VERSION_NUMBER, 2, versionNumber);
         dec2hex2binary(WHOHAS_TYPE, 2, packetType);
@@ -121,22 +134,22 @@ uint8_t** gen_WHOHAS(ll *myHead){
         dec2hex2binary(WHOHAS_HEADER + WHOHAS_CHUNK * tempNumHashes + 4, 4,
                                                         totalPacketLength);
         dec2hex2binary(tempNumHashes, 2, numberHashes);
-        memmove(tempRequest, magicNumber,       2);
-        memmove(tempRequest, versionNumber,     1);
-        memmove(tempRequest, packetType,        1);
-        memmove(tempRequest, headerLength,      2);
-        memmove(tempRequest, totalPacketLength, 2);
-        memmove(tempRequest, sequenceNumber,    4);
-        memmove(tempRequest, ackNumber,         4);
-        memmove(tempRequest, numberHashes,      1);
-        memmove(tempRequest, padding,           3);
+        mmemcat(&tempRequest, magicNumber,       2);
+        mmemcat(&tempRequest, versionNumber,     1);
+        mmemcat(&tempRequest, packetType,        1);
+        mmemcat(&tempRequest, headerLength,      2);
+        mmemcat(&tempRequest, totalPacketLength, 2);
+        mmemcat(&tempRequest, sequenceNumber,    4);
+        mmemcat(&tempRequest, ackNumber,         4);
+        mmemcat(&tempRequest, numberHashes,      1);
+        mmemcat(&tempRequest, padding,           3);
 
         while(temp != NULL){
-            memmove(tempRequest, node->data, WHOHAS_CHUNK);
+            mmemcat(&tempRequest, temp->data, WHOHAS_CHUNK);
             temp = temp->next;
         }
 
-        strcpy(myRequests[packCounter], tempRequest);
+        strcpy(myRequests[packCounter], tempRequest.buf);
         packCounter++;
         numHashes -= MAX_NUM_HASH;
     }
