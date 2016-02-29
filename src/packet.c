@@ -8,6 +8,11 @@
 
 #include "packet.h"
 
+void mmemmove(byte_buf *tempRequest, uint8_t *binaryNumber, int size){
+    memmove(binaryNumber, tempRequest->buf + tempRequest->pos, size);
+    tempRequest->pos += size;
+}
+
 void mmemcat(byte_buf *tempRequest, uint8_t *binaryNumber, int size){
     memmove(tempRequest->buf + tempRequest->pos, binaryNumber, size);
     tempRequest->pos += size;
@@ -88,6 +93,51 @@ void dec2hex2binary(int decimalNumber, int bytesNeeded, uint8_t* binaryNumber){
     }
 
     hex2binary(hexadecimalNumber, bytesNeeded, binaryNumber);
+}
+
+//Still haven't returned the parsed stuff
+//Test later
+void parse_packet(uint8_t *packet){
+    byte_buf tempRequest;
+    packet_info myPack;
+
+    bzero(myPack.magicNumber,       2);
+    bzero(myPack.versionNumber,     2);
+    bzero(myPack.packetType,        1);
+    bzero(myPack.headerLength,      2);
+    bzero(myPack.totalPacketLength, 2);
+    bzero(myPack.sequenceNumber,    4);
+    bzero(myPack.ackNumber,         4);
+    bzero(myPack.numberHashes,      1);
+    bzero(myPack.body,  PACKET_LENGTH);
+    bzero(tempRequest.buf, PACKET_LENGTH);
+    tempRequest.pos = 0;
+    memcpy(tempRequest.buf, packet, PACKET_LENGTH);
+
+    mmemmove(&tempRequest, myPack.magicNumber,      2);
+    mmemmove(&tempRequest, myPack.versionNumber,    1);
+
+    /*
+    if(magicNumber != 15441 && versionNumber != 1){
+        //Drop the packet
+    }
+    */
+
+    mmemmove(&tempRequest, myPack.packetType, 1);
+    mmemmove(&tempRequest, myPack.headerLength, 2);
+    mmemmove(&tempRequest, myPack.totalPacketLength, 2);
+    mmemmove(&tempRequest, myPack.sequenceNumber, 4);
+    mmemmove(&tempRequest, myPack.ackNumber, 4);
+
+    if( strcmp((char *)myPack.packetType, "0") == 0 ||
+        strcmp((char *)myPack.packetType, "1") == 0 ||
+        strcmp((char *)myPack.packetType, "2") == 0){
+
+        mmemmove(&tempRequest, myPack.numberHashes, 1);
+        mmemmove(&tempRequest, myPack.padding, 3);
+    }
+
+    mmemmove(&tempRequest, myPack.body, PACKET_LENGTH);
 }
 
 //Test later

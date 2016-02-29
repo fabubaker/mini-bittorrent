@@ -36,7 +36,21 @@ struct byte_buf {
   int pos;
 };
 
+struct packet_info {
+    uint8_t magicNumber[2];
+    uint8_t versionNumber[1];
+    uint8_t packetType[1];
+    uint8_t headerLength[2];
+    uint8_t totalPacketLength[2];
+    uint8_t sequenceNumber[4];
+    uint8_t ackNumber[4];
+    uint8_t numberHashes[1];
+    uint8_t padding[3]; //Well never be used but needed
+    uint8_t body[PACKET_LENGTH];
+};
+
 typedef struct byte_buf byte_buf;
+typedef struct packet_info packet_info;
 
 void mmemcat(byte_buf *tempRequest, uint8_t *binaryNumber, int size);
 void dec2hex2binary(int decimalNumber, int bytesNeeded, uint8_t* binaryNumber);
