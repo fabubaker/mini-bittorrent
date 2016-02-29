@@ -51,7 +51,7 @@ void hex2binary(char *hex, int len, uint8_t*buf) {
  * result to the given hex2binary function.
  * Arguments:
  *      1. decimalNumber: Number to be converted.
- *      2. bytesNeeded: The maximum possible number of hex bytes needed to 
+ *      2. bytesNeeded: The maximum possible number of hex bytes needed to
  *         represent the number.
  *      3. binaryNumber: buffer where the binary number is stored
  */
@@ -138,7 +138,7 @@ void gen_DATA(uint8_t *chunkHash){
     chunk_table *lookup;
     byte_buf tempRequest;
 
-    HASH_FIND(bb, hash_chunks, chunkHash, 20, lookup);
+    HASH_FIND(hh, hash_chunks, chunkHash, 20, lookup);
 
     if(lookup == NULL){
         //Error!
@@ -207,8 +207,8 @@ void gen_DATA(uint8_t *chunkHash){
     }
 }
 
-/* Generates a WHOHAS/IHAVE/GET request (more than one if necessary). Each 
- * packet has its own header. Which request is generated depends on the 
+/* Generates a WHOHAS/IHAVE/GET request (more than one if necessary). Each
+ * packet has its own header. Which request is generated depends on the
  * packetCode argument.
  * Arguments:
  *      1. list: Pre-processed linked list. The head contains the number of
@@ -262,7 +262,7 @@ void gen_WHOIGET(ll *list, int packetCode){
         dec2hex2binary(HEADER + CHUNK * tempNumHashes + 4, 4,
                                                         totalPacketLength);
         dec2hex2binary(tempNumHashes, 2, numberHashes);
-        
+
         mmemcat(&tempRequest, magicNumber,       2);
         mmemcat(&tempRequest, versionNumber,     1);
         mmemcat(&tempRequest, packetType,        1);

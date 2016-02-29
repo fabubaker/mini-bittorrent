@@ -1,0 +1,13 @@
+/******************************************************************************************/
+/* @file vulnerabilities.txt                                                              */
+/*                                                                                        */
+/* @brief Contains a list of vulnerabilities present in the current version of project-2. */
+/*                                                                                        */
+/* @author Fadhil Abubaker, Malek Anabtawi                                                */
+/******************************************************************************************/
+
+1. packet.c: 83
+
+"int numPacket = (numHashes / MAX_NUM_HASH) + 1;"
+
+if numHashes = MAX_NUM_HASH, we get an incorrect value for numPacket.

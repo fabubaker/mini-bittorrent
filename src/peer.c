@@ -1,36 +1,15 @@
-/*
- * peer.c
- *
- * Authors: Ed Bardsley <ebardsle+441@andrew.cmu.edu>,
- *          Dave Andersen
- * Class: 15-441 (Spring 2005)
- *
- * Skeleton for 15-441 Project 2.
- *
- */
-
-#include <sys/types.h>
-#include <arpa/inet.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include "debug.h"
-#include "spiffy.h"
-#include "bt_parse.h"
-#include "input_buffer.h"
-
-/* Prototypes */
-
-void peer_run(bt_config_t *config);
-void process_inbound_udp(int sock);
-void process_get(char *chunkfile, char *outputfile);
-void handle_user_input(char *line, void *cbdata);
+/*******************************************************************/
+/* @file peer.c                                                    */
+/*                                                                 */
+/* @brief A simple peer implementation of the BitTorrent protocol. */
+/*                                                                 */
+/* @author Fadhil Abubaker, Malek Anabtawi                         */
+/*******************************************************************/
 
 /* Definitions */
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv)
+{
   bt_config_t config;
 
   bt_init(&config, argc, argv);
@@ -43,8 +22,12 @@ int main(int argc, char **argv) {
   strcpy(config.has_chunk_file, "haschunks");
 #endif
 
+
   /* Parse the cmd line tokens */
   bt_parse_command_line(&config);
+
+  /* Populate the global variables */
+  global_populate(&config);
 
 #ifdef DEBUG
   if (debug & DEBUG_INIT) {
@@ -97,20 +80,22 @@ void peer_run(bt_config_t *config) {
     nfds = select(sock+1, &readfds, NULL, NULL, NULL);
 
     if (nfds > 0) {
-      if (FD_ISSET(sock, &readfds)) {
-  process_inbound_udp(sock);
-      }
+      if (FD_ISSET(sock, &readfds))
+        {
+          process_inbound_udp(sock);
+        }
 
-      if (FD_ISSET(STDIN_FILENO, &readfds)) {
-  process_user_input(STDIN_FILENO, userbuf, handle_user_input,
-         "Currently unused");
-      }
+      if (FD_ISSET(STDIN_FILENO, &readfds))
+        {
+          process_user_input(STDIN_FILENO, userbuf, handle_user_input,
+                             "Currently unused");
+        }
     }
   }
 }
 
 void process_inbound_udp(int sock) {
-  #define BUFLEN 1500
+#define BUFLEN 1500
   struct sockaddr_in from;
   socklen_t fromlen;
   char buf[BUFLEN];
@@ -119,15 +104,15 @@ void process_inbound_udp(int sock) {
   spiffy_recvfrom(sock, buf, BUFLEN, 0, (struct sockaddr *) &from, &fromlen);
 
   printf("PROCESS_INBOUND_UDP SKELETON -- replace!\n"
-   "Incoming message from %s:%d\n%s\n\n",
-   inet_ntoa(from.sin_addr),
-   ntohs(from.sin_port),
-   buf);
+         "Incoming message from %s:%d\n%s\n\n",
+         inet_ntoa(from.sin_addr),
+         ntohs(from.sin_port),
+         buf);
 }
 
 void process_get(char *chunkfile, char *outputfile) {
   printf("PROCESS GET SKELETON CODE CALLED.  Fill me in!  (%s, %s)\n",
-  chunkfile, outputfile);
+         chunkfile, outputfile);
 }
 
 void handle_user_input(char *line, void *cbdata) {
@@ -142,3 +127,86 @@ void handle_user_input(char *line, void *cbdata) {
     }
   }
 }
+
+void global_populate(bt_config_t* config)
+{
+  FILE* file;
+  char* buf = NULL; int n = 0;
+  ssize_t len = 0;
+
+  /* Make max_conn a global variable */
+  max_conn = config->max_conn;
+
+  /* Get the path to the master data file  */
+  file =  fopen(config->chunk_file, r);
+  len = getline(&buf, &n, file);  // Need to free buf...
+
+  master_data_file = malloc(len);
+  sscanf(buf, "File: %s", master_data_file);
+  free(buf);
+
+  /* Convert peers from linked list to hash table   */
+  convert_LL2HT(config->peers, &peer_list);
+
+  /* Open the master_chunk file and make a hash table out of it  */
+  make_chunktable(config->chunk_file, &master_chunks, 0);
+
+  /* Open the has_chunks file and make a hash table out of it  */
+  make_chunktable(config->has_chunk_file, &has_chunks, 1);
+
+}
+
+void convert_LL2HT(bt_peer_s* peers, peer** peer_list)
+{
+
+}
+
+void make_chunktable(char* chunk_file, chunk_table** table, int flag)
+{
+  FILE* file;
+  char buf[3*HASH_SIZE] = {0}; int n = 3*HASH_SIZE;
+
+  ssize_t len = 0;
+  chunk_table* tmptable = NULL;
+
+  file = fopen(chunk_file, r);
+
+  if(!flag)
+    {
+      getline(&buf, &n, file); // Remove "File: ..."
+      getline(&buf, &n, file); // Remove "Chunks: ..."
+      bzero(buf, n);
+    }
+
+  while((len = getline(&buf, &n, file)) != -1)
+    {
+      char tmpbuf[30] = {0};
+      tmptable = calloc(1,sizeof(chunk_table));
+      sscanf(buf, "%zu %s", &tmptable->id, &tmpbuf);
+      ascii2hex(tmpbuf, HASH_SIZE+10, tmptable->chunk);
+      HASH_ADD_KEYPTR(hh, *table, tmptable->chunk, HASH_SIZE, tmptable);
+    }
+
+  return;
+}
+
+/*
+  Notes:
+
+  The other tactic (much more sane) is to avoid the mess with signals and
+  setitimer completely. setitimer is seriously legacy and causes problems for
+  all sorts of things (eg. it can cause functions like getaddrinfo to hang, a
+  bug that still hasn't been fixed in glibc
+  (http://www.cygwin.org/frysk/bugzilla/show_bug.cgi?id=15819). Signals are bad
+  for your health. So the "normal" tactic is to use the timeout argument to
+  select. You have a linked list of timers, objects you use to manager periodic
+  events in your code. When you call select, you use as the timeout the shortest
+  of your remaining timers. When the select call returns, you check if any
+  timers are expired and call the timer handler as well as the handlers for your
+  fd events. That's a standard application event loop. This way your loop code
+  so you can listen for timer-driven events as well as fd-driven events. Pretty
+  much every application on your system uses some variant on this mechanism.
+
+  Use signalfd
+
+*/
