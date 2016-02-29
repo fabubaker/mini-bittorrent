@@ -68,16 +68,29 @@ void dec2hex2binary(int decimalNumber, int bytesNeeded, uint8_t* binaryNumber){
         quotient = quotient / 16;
         i--;
     }
+
+    i = 0;
+
+    while(i < bytesNeeded){
+        if(hexadecimalNumber[i] != '\0'){
+            break;
+        }
+        hexadecimalNumber[i] = '0';
+        i++;
+    }
+
     hex2binary(hexadecimalNumber, bytesNeeded, binaryNumber);
 }
 
-/* Generates a WHOHAS request (more than one if necessary). Each packet
- * has its own header.
+/* Generates a WHOHAS/IHAVE/GET request (more than one if necessary). Each 
+ * packet has its own header. Which request is generated depends on the 
+ * packetCode argument.
  * Arguments:
  *      1. list: Pre-processed linked list. The head contains the number of
  *      chunks and a first node, which corresponds to the first chunk.
+ *      2. packetCode: 0 for WHOHAS, 1 for IHAVE, 2 for GET (the real GET).
  */
-void gen_WHOHAS(ll *list){
+void gen_WHOIGET(ll *list, int packetCode){
 
     int numHashes = list->count;
     int numPacket = (numHashes / MAX_NUM_HASH) + 1;
@@ -87,15 +100,22 @@ void gen_WHOHAS(ll *list){
     node *temp = list->first;
     byte_buf tempRequest;
 
+    /*
+    if(packetCode == 2){
+        ASSERT(numHashes == 1);
+    }
+    */
+
     uint8_t magicNumber[2];
-    uint8_t versionNumber[1];
-    uint8_t packetType[1] = {WHOHAS_TYPE};
+    uint8_t versionNumber[1] = {VERSION_NUMBER};
+    uint8_t packetType[1] = {packetCode};
     uint8_t headerLength[2];
     uint8_t totalPacketLength[2];
     uint8_t sequenceNumber[4] = {0,0,0,0};
     uint8_t ackNumber[4] = {0,0,0,0};
     uint8_t padding[3] = {0,0,0};
     uint8_t numberHashes[1];
+
 
     while(packCounter < numPacket){
         if(numPacket == packCounter + 1){
@@ -105,14 +125,19 @@ void gen_WHOHAS(ll *list){
         }
 
         bzero(tempRequest.buf, PACKET_LENGTH);
+        bzero(magicNumber, 2);
+        bzero(headerLength, 2);
+        bzero(totalPacketLength, 2);
+        bzero(numberHashes, 1);
+
         tempRequest.pos = 0;
 
         dec2hex2binary(MAGIC_NUMBER, 4, magicNumber);
-        dec2hex2binary(VERSION_NUMBER, 2, versionNumber);
         dec2hex2binary(HEADER, 4, headerLength);
         dec2hex2binary(HEADER + CHUNK * tempNumHashes + 4, 4,
                                                         totalPacketLength);
         dec2hex2binary(tempNumHashes, 2, numberHashes);
+        
         mmemcat(&tempRequest, magicNumber,       2);
         mmemcat(&tempRequest, versionNumber,     1);
         mmemcat(&tempRequest, packetType,        1);
@@ -142,7 +167,7 @@ int main(){
   //  node* cur = NULL;
 
   ll* test1 = create_ll();
-  add_node(test1, buf1, 200);
+  add_node(test1, buf1, 200); //A chunk is 20 bytes, fool
   add_node(test1, buf2, 200);
   add_node(test1, buf3, 200);
   add_node(test1, buf3, 200);
@@ -151,7 +176,7 @@ int main(){
   add_node(test1, buf3, 200);
   add_node(test1, buf3, 200);
 
-  gen_WHOHAS(test1);
+  gen_WHOIGET(test1, 0);
 
 }
 #endif
