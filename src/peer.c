@@ -22,7 +22,6 @@ int main(int argc, char **argv)
   strcpy(config.has_chunk_file, "haschunks");
 #endif
 
-
   /* Parse the cmd line tokens */
   bt_parse_command_line(&config);
 
@@ -156,11 +155,49 @@ void global_populate(bt_config_t* config)
 
 }
 
-void convert_LL2HT(bt_peer_s* peers, peer** peer_list)
-{
 
+/**************************************************************************/
+/* @brief Takes a linked list containing all the peers and converts       */
+/*        it into a hash table with the string "address:port" as the key. */
+/* @param ll_peers The linked list of peers                               */
+/* @param ht_peers The hash table of peers                                */
+/**************************************************************************/
+void convert_LL2HT(bt_peer_t* ll_peers, peer** ht_peers)
+{
+  bt_peers_t *next = NULL, *cur = NULL;
+  peer* tmppeer = NULL;
+
+  for(cur = ll_peers; cur; cur = cur->next)
+    {
+      char buf[] = {0};
+
+      tmppeer = calloc(1, sizeof(peer));
+
+      tmppeer->id = cur->id;
+      tmppeer->timeoutfd = -1;
+
+      sprintf(tmppeer->key, "%s:%d",
+              inet_ntoa(cur->addr.sin_addr),
+              ntohs(cur->addr.sin_port));
+
+      tmppeer->addr.sin_addr.s_addr = cur->addr.sin_addr.s_addr;
+      tmppeer->addr.sin_family = AF_INET;
+      tmppeer->addr.sin_port   = cur->addr.sin_port;
+
+      tmppeer->has_chunks = NULL;
+
+      HASH_ADD_STR( *ht_peers, key, tmppeer );
+    }
 }
 
+
+/************************************************************************/
+/* @brief Takes a file containing lines with <id chunk-hash> and stores */
+/*        them in a hash table, with the hashes as key.                 */
+/* @param chunk_file The file containing the <id chunk-hash> lines.     */
+/* @param table      The table to populate                              */
+/* @param flag       To indicate a master-chunk-file or not.            */
+/************************************************************************/
 void make_chunktable(char* chunk_file, chunk_table** table, int flag)
 {
   FILE* file;
@@ -180,11 +217,13 @@ void make_chunktable(char* chunk_file, chunk_table** table, int flag)
 
   while((len = getline(&buf, &n, file)) != -1)
     {
-      char tmpbuf[30] = {0};
+      char tmpbuf[HASH_SIZE+10] = {0};
+
       tmptable = calloc(1,sizeof(chunk_table));
       sscanf(buf, "%zu %s", &tmptable->id, &tmpbuf);
       ascii2hex(tmpbuf, HASH_SIZE+10, tmptable->chunk);
-      HASH_ADD_KEYPTR(hh, *table, tmptable->chunk, HASH_SIZE, tmptable);
+
+      HASH_ADD(hh, *table, chunk, HASH_SIZE, tmptable);
     }
 
   return;

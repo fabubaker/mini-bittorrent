@@ -23,7 +23,7 @@
 
 #define HASH_SIZE     20
 #define PORT_LEN      10
-#define PEER_KEY_LEN  INET_ADDRSTRLEN + 1 + PORT_LEN
+#define PEER_KEY_LEN  INET_ADDRSTRLEN + 5 + PORT_LEN
 
 /* Global variables that keep the state of this peer */
 
@@ -54,7 +54,8 @@ typedef struct peer {
   int                timeoutfd;
 
   /* Format:         "address:port" */
-  char               addr[PEER_KEY_LEN];
+  char               key[PEER_KEY_LEN];
+  struct sockaddr_in addr;
 
   chunk_table*       has_chunks;
   UT_hash_handle     hh;
