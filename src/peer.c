@@ -6,6 +6,22 @@
 /* @author Fadhil Abubaker, Malek Anabtawi                         */
 /*******************************************************************/
 
+#include "peer.h"
+
+/* Globals */
+
+peer*        peer_list = NULL;      // Provided in argv
+
+chunk_table* get_chunks = NULL;     // Provided in STDIN
+chunk_table* has_chunks = NULL;     // Provided in argv
+chunk_table* master_chunks = NULL;  // Provided in argv
+
+size_t       max_conn;              // Provided in argv
+
+char*        master_data_file;      // Provided in master_chunks file
+char*        output_file;           // Provided in STDIN
+
+
 /* Definitions */
 
 int main(int argc, char **argv)
@@ -89,6 +105,11 @@ void peer_run(bt_config_t *config) {
           process_user_input(STDIN_FILENO, userbuf, handle_user_input,
                              "Currently unused");
         }
+
+      /* for(int i = 0; i < ; i++) */
+      /*   { */
+
+      /*   } */
     }
   }
 }
@@ -100,7 +121,7 @@ void process_inbound_udp(int sock) {
   char buf[BUFLEN];
 
   fromlen = sizeof(from);
-  spiffy_recvfrom(sock, buf, BUFLEN, 0, (struct sockaddr *) &from, &fromlen);
+  recvfrom(sock, buf, BUFLEN, 0, (struct sockaddr *) &from, &fromlen);
 
   printf("PROCESS_INBOUND_UDP SKELETON -- replace!\n"
          "Incoming message from %s:%d\n%s\n\n",
@@ -116,6 +137,7 @@ void process_get(char *chunkfile, char *outputfile) {
 
 void handle_user_input(char *line, void *cbdata) {
   char chunkf[128], outf[128];
+  cbdata++; // Appease the compiler
 
   bzero(chunkf, sizeof(chunkf));
   bzero(outf, sizeof(outf));
@@ -130,14 +152,14 @@ void handle_user_input(char *line, void *cbdata) {
 void global_populate(bt_config_t* config)
 {
   FILE* file;
-  char* buf = NULL; int n = 0;
+  char* buf = NULL; size_t n = 0;
   ssize_t len = 0;
 
   /* Make max_conn a global variable */
   max_conn = config->max_conn;
 
   /* Get the path to the master data file  */
-  file =  fopen(config->chunk_file, r);
+  file =  fopen(config->chunk_file, "r");
   len = getline(&buf, &n, file);  // Need to free buf...
 
   master_data_file = malloc(len);
@@ -164,13 +186,11 @@ void global_populate(bt_config_t* config)
 /**************************************************************************/
 void convert_LL2HT(bt_peer_t* ll_peers, peer** ht_peers)
 {
-  bt_peers_t *next = NULL, *cur = NULL;
-  peer* tmppeer = NULL;
+  bt_peer_t *cur = NULL;
+  peer* tmppeer  = NULL;
 
   for(cur = ll_peers; cur; cur = cur->next)
     {
-      char buf[] = {0};
-
       tmppeer = calloc(1, sizeof(peer));
 
       tmppeer->id = cur->id;
@@ -201,12 +221,13 @@ void convert_LL2HT(bt_peer_t* ll_peers, peer** ht_peers)
 void make_chunktable(char* chunk_file, chunk_table** table, int flag)
 {
   FILE* file;
-  char buf[3*HASH_SIZE] = {0}; int n = 3*HASH_SIZE;
+  char* buf = calloc(1, 3*HASH_SIZE);
+  size_t n = 3*HASH_SIZE;
 
   ssize_t len = 0;
   chunk_table* tmptable = NULL;
 
-  file = fopen(chunk_file, r);
+  file = fopen(chunk_file, "r");
 
   if(!flag)
     {
@@ -220,12 +241,13 @@ void make_chunktable(char* chunk_file, chunk_table** table, int flag)
       char tmpbuf[HASH_SIZE+10] = {0};
 
       tmptable = calloc(1,sizeof(chunk_table));
-      sscanf(buf, "%zu %s", &tmptable->id, &tmpbuf);
+      sscanf(buf, "%zu %s", &tmptable->id, tmpbuf);
       ascii2hex(tmpbuf, HASH_SIZE+10, tmptable->chunk);
 
       HASH_ADD(hh, *table, chunk, HASH_SIZE, tmptable);
     }
 
+  free(buf);
   return;
 }
 

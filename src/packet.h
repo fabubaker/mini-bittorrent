@@ -6,11 +6,16 @@
 /* @author Malek Anabtawi, Fadhil Abubaker              */
 /********************************************************/
 
+#ifndef PACKET_H
+#define PACKET_H
+
 #include <stdio.h>
 #include <ctype.h>
 #include <string.h>
 #include "chunk.h"
 #include "ds.h"
+#include "uthash.h"
+#include "peer.h"
 
 #define DATA_LENGTH		1000  // Size of the data in a DATA packet
 #define CHUNK_SIZE		512000// Size of a data chunk in bytes
@@ -30,6 +35,7 @@
 #define ACK_TYPE        4
 #define DENIED_TYPE     5
 
+/* Structs */
 
 struct byte_buf {
   uint8_t buf[PACKET_LENGTH];
@@ -58,3 +64,5 @@ void dec2hex2binary(int decimalNumber, int bytesNeeded, uint8_t* binaryNumber);
 
 void gen_WHOIGET(ll *list, int packetCode);
 void gen_DATA(uint8_t *chunkHash);
+
+#endif

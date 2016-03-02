@@ -69,38 +69,39 @@ void add_node(ll* list, uint8_t* data, size_t n)
   list->count++;
 }
 
-#ifdef TESTING
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
 
-int main()
-{
-  uint8_t buf1[200] = {2,3,4,1,1,1,0};
-  uint8_t buf2[200] = {1,3,2,1,1,1,0};
-  uint8_t buf3[200] = {6,5,13,2,1,8,0};
-  node* cur = NULL;
+/* #ifdef TESTING */
+/* #include <stdlib.h> */
+/* #include <stdio.h> */
+/* #include <string.h> */
 
-  ll* test1 = create_ll();
-  add_node(test1, buf1, 200);
-  add_node(test1, buf2, 200);
-  add_node(test1, buf3, 200);
-  add_node(test1, buf3, 200);
-  add_node(test1, buf3, 200);
-  add_node(test1, buf3, 200);
-  add_node(test1, buf3, 200);
-  add_node(test1, buf3, 200);
+/* int main() */
+/* { */
+/*   uint8_t buf1[200] = {2,3,4,1,1,1,0}; */
+/*   uint8_t buf2[200] = {1,3,2,1,1,1,0}; */
+/*   uint8_t buf3[200] = {6,5,13,2,1,8,0}; */
+/*   node* cur = NULL; */
 
-  cur = test1->first;
+/*   ll* test1 = create_ll(); */
+/*   add_node(test1, buf1, 200); */
+/*   add_node(test1, buf2, 200); */
+/*   add_node(test1, buf3, 200); */
+/*   add_node(test1, buf3, 200); */
+/*   add_node(test1, buf3, 200); */
+/*   add_node(test1, buf3, 200); */
+/*   add_node(test1, buf3, 200); */
+/*   add_node(test1, buf3, 200); */
 
-  for(size_t i = 0; i < test1->count; i++)
-    {
-      cur = cur->next;
-      /* Check in GDB values of cur->data */
-    }
+/*   cur = test1->first; */
 
-  remove_ll(test1);
-}
-#endif
+/*   for(size_t i = 0; i < test1->count; i++) */
+/*     { */
+/*       cur = cur->next; */
+/*       /\* Check in GDB values of cur->data *\/ */
+/*     } */
+
+/*   remove_ll(test1); */
+/* } */
+/* #endif */
 
 /* End Linked list */

@@ -25,30 +25,20 @@
 #define PORT_LEN      10
 #define PEER_KEY_LEN  INET_ADDRSTRLEN + 5 + PORT_LEN
 
-/* Global variables that keep the state of this peer */
-
-peer*        peer_list = NULL;      // Provided in argv
-
-chunk_table* get_chunks = NULL;     // Provided in STDIN
-chunk_table* has_chunks = NULL;     // Provided in argv
-chunk_table* master_chunks = NULL;  // Provided in argv
-
-size_t       max_conn;              // Provided in argv
-
-char*        master_data_file;      // Provided in master_chunks file
-char*        output_file;           // Provided in STDIN
+typedef struct chunk_table chunk_table;
+typedef struct peer peer;
 
 /* Structs */
 
-typedef struct chunk_table {
+struct chunk_table {
 
   uint8_t        chunk[HASH_SIZE];  // Key
   size_t         id;
   UT_hash_handle hh;
 
-} chunk_table;
+};
 
-typedef struct peer {
+struct peer {
 
   int                id;
   int                timeoutfd;
@@ -60,7 +50,7 @@ typedef struct peer {
   chunk_table*       has_chunks;
   UT_hash_handle     hh;
 
-} peer;
+};
 
 
 /* Prototypes */
@@ -70,5 +60,8 @@ void process_inbound_udp(int sock);
 void process_get(char *chunkfile, char *outputfile);
 void handle_user_input(char *line, void *cbdata);
 
+void global_populate(bt_config_t* config);
+void convert_LL2HT(bt_peer_t* ll_peers, peer** ht_peers);
+void make_chunktable(char* chunk_file, chunk_table** table, int flag);
 
 #endif

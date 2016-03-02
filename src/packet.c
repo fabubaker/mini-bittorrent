@@ -8,6 +8,21 @@
 
 #include "packet.h"
 
+/* Globals */
+
+extern  peer*        peer_list;      // Provided in argv
+
+extern  chunk_table* get_chunks;     // Provided in STDIN
+extern  chunk_table* has_chunks;     // Provided in argv
+extern  chunk_table* master_chunks;  // Provided in argv
+
+extern size_t       max_conn;          // Provided in argv
+
+extern char*        master_data_file;  // Provided in master_chunks file
+extern char*        output_file;       // Provided in STDIN
+
+/* Definitions */
+
 void mmemmove(byte_buf *tempRequest, uint8_t *binaryNumber, int size){
     memmove(binaryNumber, tempRequest->buf + tempRequest->pos, size);
     tempRequest->pos += size;
@@ -16,40 +31,6 @@ void mmemmove(byte_buf *tempRequest, uint8_t *binaryNumber, int size){
 void mmemcat(byte_buf *tempRequest, uint8_t *binaryNumber, int size){
     memmove(tempRequest->buf + tempRequest->pos, binaryNumber, size);
     tempRequest->pos += size;
-}
-
-/**
- * converts the binary char string str to ascii format. the length of
- * ascii should be 2 times that of str
- */
-void binary2hex(uint8_t *buf, int len, char *hex) {
-    int i=0;
-    for(i=0;i<len;i++) {
-        sprintf(hex+(i*2), "%.2x", buf[i]);
-    }
-    hex[len*2] = 0;
-}
-
-/**
- *Ascii to hex conversion routine
- */
-static uint8_t _hex2binary(char hex)
-{
-  hex = toupper(hex);
-  uint8_t c = ((hex <= '9') ? (hex - '0') : (hex - ('A' - 0x0A)));
-  return c;
-}
-
-/**
- * converts the ascii character string in "ascii" to binary string in "buf"
- * the length of buf should be atleast len / 2
- */
-void hex2binary(char *hex, int len, uint8_t*buf) {
-    int i = 0;
-    for(i=0;i<len;i+=2) {
-        buf[i/2] =  _hex2binary(hex[i]) << 4
-      | _hex2binary(hex[i+1]);
-    }
 }
 
 /* First converts decimalNumber from decimal to hex. Next, it passes the
@@ -204,7 +185,7 @@ void gen_DATA(uint8_t *chunkHash){
     chunk_table *lookup;
     byte_buf tempRequest;
 
-    HASH_FIND(hh, hash_chunks, chunkHash, 20, lookup);
+    HASH_FIND(hh, has_chunks, chunkHash, 20, lookup);
 
     if(lookup == NULL){
         //Error!
@@ -212,7 +193,7 @@ void gen_DATA(uint8_t *chunkHash){
         id = (int)lookup->id;
     }
 
-    FILE *fp = fopen(master_data, "r");
+    FILE *fp = fopen(master_data_file, "r");
 
     if(!(fseek(fp, id * CHUNK_SIZE, 0))){
         //Error!
@@ -350,24 +331,24 @@ void gen_WHOIGET(ll *list, int packetCode){
     }
 }
 
-#ifdef TESTING
-int main(){
-  uint8_t buf1[200] = {2,3,4,1,1,1,0};
-  uint8_t buf2[200] = {1,3,2,1,1,1,0};
-  uint8_t buf3[200] = {6,5,13,2,1,8,0};
-  //  node* cur = NULL;
+/* #ifdef TESTING */
+/* int main(){ */
+/*   uint8_t buf1[200] = {2,3,4,1,1,1,0}; */
+/*   uint8_t buf2[200] = {1,3,2,1,1,1,0}; */
+/*   uint8_t buf3[200] = {6,5,13,2,1,8,0}; */
+/*   //  node* cur = NULL; */
 
-  ll* test1 = create_ll();
-  add_node(test1, buf1, 200); //A chunk is 20 bytes, fool
-  add_node(test1, buf2, 200);
-  add_node(test1, buf3, 200);
-  add_node(test1, buf3, 200);
-  add_node(test1, buf3, 200);
-  add_node(test1, buf3, 200);
-  add_node(test1, buf3, 200);
-  add_node(test1, buf3, 200);
+/*   ll* test1 = create_ll(); */
+/*   add_node(test1, buf1, 200); //A chunk is 20 bytes, fool */
+/*   add_node(test1, buf2, 200); */
+/*   add_node(test1, buf3, 200); */
+/*   add_node(test1, buf3, 200); */
+/*   add_node(test1, buf3, 200); */
+/*   add_node(test1, buf3, 200); */
+/*   add_node(test1, buf3, 200); */
+/*   add_node(test1, buf3, 200); */
 
-  gen_WHOIGET(test1, 0);
+/*   gen_WHOIGET(test1, 0); */
 
-}
-#endif
+/* } */
+/* #endif */
