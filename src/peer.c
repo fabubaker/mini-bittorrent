@@ -65,7 +65,7 @@ void peer_run(bt_config_t *config) {
   struct user_iobuf *userbuf;
 
   /* Create a buffer to handle user inputs */
-  if ((userbuf = create_userbuf()) == NULL) {
+  if ((userbuf = create_userbuf(USERBUF_SIZE)) == NULL) {
     perror("peer_run could not allocate userbuf");
     exit(-1);
   }
@@ -106,19 +106,23 @@ void peer_run(bt_config_t *config) {
                              "Currently unused");
         }
 
-      /* for(int i = 0; i < ; i++) */
-      /*   { */
+      /* Loop over the client hash table */
+      for(peer* i = peer_list; i != NULL; i = i->hh.next)
+        {
 
-      /*   } */
+        }
+
     }
   }
 }
 
+
+@brief Process incoming UDP data and store it in a
 void process_inbound_udp(int sock) {
 #define BUFLEN 1500
   struct sockaddr_in from;
   socklen_t fromlen;
-  char buf[BUFLEN];
+  uint8_t buf[BUFLEN];
 
   fromlen = sizeof(from);
   recvfrom(sock, buf, BUFLEN, 0, (struct sockaddr *) &from, &fromlen);
@@ -128,6 +132,8 @@ void process_inbound_udp(int sock) {
          inet_ntoa(from.sin_addr),
          ntohs(from.sin_port),
          buf);
+
+
 }
 
 void process_get(char *chunkfile, char *outputfile) {
@@ -205,6 +211,7 @@ void convert_LL2HT(bt_peer_t* ll_peers, peer** ht_peers)
       tmppeer->addr.sin_port   = cur->addr.sin_port;
 
       tmppeer->has_chunks = NULL;
+      tmppeer->buf        = create_bytebuf(PACKET_LENGTH);
 
       HASH_ADD_STR( *ht_peers, key, tmppeer );
     }

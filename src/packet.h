@@ -59,10 +59,13 @@ struct packet_info {
 typedef struct byte_buf byte_buf;
 typedef struct packet_info packet_info;
 
+void mmemmove(byte_buf *tempRequest, uint8_t *binaryNumber, int size);
 void mmemcat(byte_buf *tempRequest, uint8_t *binaryNumber, int size);
 void dec2hex2binary(int decimalNumber, int bytesNeeded, uint8_t* binaryNumber);
 
 void gen_WHOIGET(ll *list, int packetCode);
 void gen_DATA(uint8_t *chunkHash);
+
+struct byte_buf*  create_bytebuf(size_t bufsize);
 
 #endif

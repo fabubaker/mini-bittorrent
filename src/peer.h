@@ -48,6 +48,8 @@ struct peer {
   struct sockaddr_in addr;
 
   chunk_table*       has_chunks;
+  struct byte_buf*   buf;
+
   UT_hash_handle     hh;
 
 };

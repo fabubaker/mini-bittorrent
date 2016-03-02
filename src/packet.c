@@ -23,6 +23,23 @@ extern char*        output_file;       // Provided in STDIN
 
 /* Definitions */
 
+struct byte_buf* create_bytebuf(size_t bufsize)
+{
+  struct byte_buf *b;
+  b = malloc(sizeof(struct byte_buf NULL));
+  if (!b) return NULL;
+
+  b->buf = malloc(bufsize + 1);
+  if (!b->buf) {
+    free(b);
+    return NULL;
+  }
+
+  b->cur = 0;
+  bzero(b->buf, bufsize+1);
+  return b;
+}
+
 void mmemmove(byte_buf *tempRequest, uint8_t *binaryNumber, int size){
     memmove(binaryNumber, tempRequest->buf + tempRequest->pos, size);
     tempRequest->pos += size;
@@ -76,11 +93,21 @@ void dec2hex2binary(int decimalNumber, int bytesNeeded, uint8_t* binaryNumber){
     hex2binary(hexadecimalNumber, bytesNeeded, binaryNumber);
 }
 
-//Still haven't returned the parsed stuff
-//Test later
-void parse_packet(uint8_t *packet){
+// Still haven't returned the parsed stuff
+// Test later
+// Will only call this function if I have at least
+// 16 bytes (minimum packet header size) as a packet.
+/*
+  Gonna have to rewrite this accomodate multiple packets
+  in a single buf
+
+  !! Should populate the given packet_info
+
+  !! Should also update packet->pos with the position of the
+  next packet, if it exists.
+ */
+void parse_packet(bytebuf* packetbuf, packet_info* packetinfo){
     byte_buf tempRequest;
-    packet_info myPack;
 
     bzero(myPack.magicNumber,       2);
     bzero(myPack.versionNumber,     2);
