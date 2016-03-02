@@ -45,7 +45,8 @@ struct packet_info {
     uint8_t sequenceNumber[4];
     uint8_t ackNumber[4];
     uint8_t numberHashes[1];
-    uint8_t padding[3]; //Well never be used but needed
+    uint8_t padding[3]; // never be used but needed
+    // Not the padding we need, but the padding we deserve...
     uint8_t body[PACKET_LENGTH];
 };
 

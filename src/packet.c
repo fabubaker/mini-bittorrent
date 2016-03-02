@@ -129,6 +129,10 @@ void parse_packet(uint8_t *packet){
     mmemmove(&tempRequest, myPack.sequenceNumber, 4);
     mmemmove(&tempRequest, myPack.ackNumber, 4);
 
+
+    /* This is WRONG! Casting to char* will convert it to ASCII encoding */
+    /* Messes up reading */
+    /* Could have done a hex to ascii or something */
     if( strcmp((char *)myPack.packetType, "0") == 0 ||
         strcmp((char *)myPack.packetType, "1") == 0 ||
         strcmp((char *)myPack.packetType, "2") == 0){
@@ -138,6 +142,7 @@ void parse_packet(uint8_t *packet){
     }
 
     mmemmove(&tempRequest, myPack.body, PACKET_LENGTH);
+    // Shouldn't it be PACKET_LENGTH, should be totaPacketLength - headerLength
 }
 
 //Test later
