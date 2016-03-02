@@ -129,19 +129,30 @@ void parse_packet(uint8_t *packet){
     mmemmove(&tempRequest, myPack.sequenceNumber, 4);
     mmemmove(&tempRequest, myPack.ackNumber, 4);
 
+    char tempHex[2];
+    bzero(tempHex, 2);
+    binary2hex(myPack.packetType, 2, tempHex);
 
-    /* This is WRONG! Casting to char* will convert it to ASCII encoding */
-    /* Messes up reading */
-    /* Could have done a hex to ascii or something */
-    if( strcmp((char *)myPack.packetType, "0") == 0 ||
-        strcmp((char *)myPack.packetType, "1") == 0 ||
-        strcmp((char *)myPack.packetType, "2") == 0){
+    if( strcmp(tempHex, "00") == 0 ||
+        strcmp(tempHex, "01") == 0 ||
+        strcmp(tempHex, "02") == 0){
 
         mmemmove(&tempRequest, myPack.numberHashes, 1);
         mmemmove(&tempRequest, myPack.padding, 3);
     }
 
-    mmemmove(&tempRequest, myPack.body, PACKET_LENGTH);
+    char tempHex2[4];
+    bzero(tempHex2, 4);
+
+    binary2hex(myPack.headerLength, 4, tempHex2);
+    long int headerLength = strtol(tempHex2, NULL, 16);
+
+    bzero(tempHex2, 4);
+
+    binary2hex(myPack.totalPacketLength, 4, tempHex2);
+    long int totalPacketLength = strtol(tempHex2, NULL, 16);
+
+    mmemmove(&tempRequest, myPack.body, totalPacketLength - headerLength);
     // Shouldn't it be PACKET_LENGTH, should be totaPacketLength - headerLength
 }
 
@@ -207,7 +218,7 @@ void gen_DATA(uint8_t *chunkHash){
         //Error!
     }
 
-    if(fread((char *)buf, 1, CHUNK_SIZE, fp) == 0){
+    if(fread((char *)buf, 1, CHUNK_SIZE, fp) == 0){ //BROKEN
         //Short count!
     }
 
