@@ -141,13 +141,23 @@ void process_inbound_udp(int sock) {
     }
 
   /* Save it in the peer state to be processed later */
-  mmemmove(buf, find->buf->buf, BUFLEN);
+  mmemclear(find->buf);
+  mmemcat(find->buf, buf, BUFLEN);
 
   printf("PROCESS_INBOUND_UDP SKELETON -- replace!\n"
          "Incoming message from %s:%d\n%s\n\n",
          inet_ntoa(from.sin_addr),
          ntohs(from.sin_port),
          buf);
+
+  packet_info packetinfo;
+  bzero();
+
+  /* Store all packet information in the struct below */
+  parse_packet(find->buf, &packetinfo);
+
+  parse_data(&packetinfo, find);
+
 
 
 }

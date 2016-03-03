@@ -62,6 +62,8 @@ typedef struct packet_info packet_info;
 
 void mmemmove(byte_buf *tempRequest, uint8_t *binaryNumber, int size);
 void mmemcat(byte_buf *tempRequest, uint8_t *binaryNumber, int size);
+void mmemclear(byte_buf *buf);
+
 void dec2hex2binary(int decimalNumber, int bytesNeeded, uint8_t* binaryNumber);
 
 void gen_WHOIGET(ll *list, int packetCode);

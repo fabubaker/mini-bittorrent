@@ -50,7 +50,12 @@ struct peer {
   chunk_table*       has_chunks;
   struct byte_buf*   buf;
 
-
+  /* Flow control/reliability state
+     Note: use only for DATA packets
+   */
+  int                LPAcked;
+  int                LPSent;
+  int                LPAvail;
 
   UT_hash_handle     hh;
 

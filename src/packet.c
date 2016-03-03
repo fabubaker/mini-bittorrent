@@ -57,13 +57,13 @@ struct byte_buf* create_bytebuf(size_t bufsize)
 */
 
 void mmemmove(uint8_t *binaryNumber, byte_buf *tempRequest, int size){
-    memmove(binaryNumber, tempRequest->buf + tempRequest->pos, size);
-    tempRequest->pos += size;
+  memmove(binaryNumber, tempRequest->buf + tempRequest->pos, size);
+  tempRequest->pos += size;
 }
 
 void mmemcat(byte_buf *tempRequest, uint8_t *binaryNumber, int size){
-    memmove(tempRequest->buf + tempRequest->pos, binaryNumber, size);
-    tempRequest->pos += size;
+  memmove(tempRequest->buf + tempRequest->pos, binaryNumber, size);
+  tempRequest->pos += size;
 }
 
 void mmemclear(byte_buf *buf)
@@ -82,37 +82,37 @@ void mmemclear(byte_buf *buf)
  */
 void dec2hex2binary(int decimalNumber, int bytesNeeded, uint8_t* binaryNumber){
 
-    int quotient;
-    int i=bytesNeeded-1, temp;
-    char hexadecimalNumber[bytesNeeded];
-    memset(hexadecimalNumber, 0, bytesNeeded);
-    quotient = decimalNumber;
+  int quotient;
+  int i=bytesNeeded-1, temp;
+  char hexadecimalNumber[bytesNeeded];
+  memset(hexadecimalNumber, 0, bytesNeeded);
+  quotient = decimalNumber;
 
-    while(quotient!=0){
-        temp = quotient % 16;
+  while(quotient!=0){
+    temp = quotient % 16;
 
-        if(temp < 10){
-            temp = temp + 48;
-        } else {
-            temp = temp + 55;
-        }
-
-        hexadecimalNumber[i] = temp;
-        quotient = quotient / 16;
-        i--;
+    if(temp < 10){
+      temp = temp + 48;
+    } else {
+      temp = temp + 55;
     }
 
-    i = 0;
+    hexadecimalNumber[i] = temp;
+    quotient = quotient / 16;
+    i--;
+  }
 
-    while(i < bytesNeeded){
-        if(hexadecimalNumber[i] != '\0'){
-            break;
-        }
-        hexadecimalNumber[i] = '0';
-        i++;
+  i = 0;
+
+  while(i < bytesNeeded){
+    if(hexadecimalNumber[i] != '\0'){
+      break;
     }
+    hexadecimalNumber[i] = '0';
+    i++;
+  }
 
-    hex2binary(hexadecimalNumber, bytesNeeded, binaryNumber);
+  hex2binary(hexadecimalNumber, bytesNeeded, binaryNumber);
 }
 
 // Still haven't returned the parsed stuff
@@ -120,98 +120,180 @@ void dec2hex2binary(int decimalNumber, int bytesNeeded, uint8_t* binaryNumber){
 // Will only call this function if I have at least
 // 16 bytes (minimum packet header size) as a packet.
 /*
-  Gonna have to rewrite this accomodate multiple packets
-  in a single buf
-
   !! Should populate the given packet_info
-
-  !! Should also update packet->pos with the position of the
-  next packet, if it exists.
- */
+*/
 void parse_packet(bytebuf* packetbuf, packet_info* packetinfo){
-    byte_buf tempRequest;
+  byte_buf tempRequest = create_bytebuf(PACKET_LENGTH);
 
-    bzero(myPack.magicNumber,       2);
-    bzero(myPack.versionNumber,     2);
-    bzero(myPack.packetType,        1);
-    bzero(myPack.headerLength,      2);
-    bzero(myPack.totalPacketLength, 2);
-    bzero(myPack.sequenceNumber,    4);
-    bzero(myPack.ackNumber,         4);
-    bzero(myPack.numberHashes,      1);
-    bzero(myPack.body,  PACKET_LENGTH);
-    bzero(tempRequest.buf, PACKET_LENGTH);
-    tempRequest.pos = 0;
-    memcpy(tempRequest.buf, packet, PACKET_LENGTH);
+  mmemclear(tempRequest);
 
-    mmemmove(&tempRequest, myPack.magicNumber,      2);
-    mmemmove(&tempRequest, myPack.versionNumber,    1);
+  memcpy(tempRequest.buf, packet, PACKET_LENGTH);
 
-    /*
+  mmemmove(&tempRequest, myPack.magicNumber,      2);
+  mmemmove(&tempRequest, myPack.versionNumber,    1);
+
+  /*
     if(magicNumber != 15441 && versionNumber != 1){
-        //Drop the packet
+    //Drop the packet
     }
-    */
+  */
 
-    mmemmove(&tempRequest, myPack.packetType, 1);
-    mmemmove(&tempRequest, myPack.headerLength, 2);
-    mmemmove(&tempRequest, myPack.totalPacketLength, 2);
-    mmemmove(&tempRequest, myPack.sequenceNumber, 4);
-    mmemmove(&tempRequest, myPack.ackNumber, 4);
+  mmemmove(&tempRequest, myPack.packetType, 1);
+  mmemmove(&tempRequest, myPack.headerLength, 2);
+  mmemmove(&tempRequest, myPack.totalPacketLength, 2);
+  mmemmove(&tempRequest, myPack.sequenceNumber, 4);
+  mmemmove(&tempRequest, myPack.ackNumber, 4);
 
-    char tempHex[2];
-    bzero(tempHex, 2);
-    binary2hex(myPack.packetType, 2, tempHex);
+  char tempHex[2];
+  bzero(tempHex, 2);
+  binary2hex(myPack.packetType, 2, tempHex);
 
-    if( strcmp(tempHex, "00") == 0 ||
-        strcmp(tempHex, "01") == 0 ||
-        strcmp(tempHex, "02") == 0){
+  if( strcmp(tempHex, "00") == 0 ||
+      strcmp(tempHex, "01") == 0 ||
+      strcmp(tempHex, "02") == 0){
 
-        mmemmove(&tempRequest, myPack.numberHashes, 1);
-        mmemmove(&tempRequest, myPack.padding, 3);
+    mmemmove(&tempRequest, myPack.numberHashes, 1);
+    mmemmove(&tempRequest, myPack.padding, 3);
+  }
+
+  char tempHex2[4];
+  bzero(tempHex2, 4);
+
+  binary2hex(myPack.headerLength, 4, tempHex2);
+  long int headerLength = strtol(tempHex2, NULL, 16);
+
+  bzero(tempHex2, 4);
+
+  binary2hex(myPack.totalPacketLength, 4, tempHex2);
+  long int totalPacketLength = strtol(tempHex2, NULL, 16);
+
+  mmemmove(&tempRequest, myPack.body, totalPacketLength - headerLength);
+}
+
+/* Takes a packet_info and parses the data accordingly */
+void parse_data(packet_info* packetinfo, peer* p)
+{
+
+  // If WHOHAS
+  /*
+    for (i = 0; i < numHash; i++)
+    {
+        extract chunk;
+        check if chunk exists in has_chunks
+
     }
+   */
 
-    char tempHex2[4];
-    bzero(tempHex2, 4);
 
-    binary2hex(myPack.headerLength, 4, tempHex2);
-    long int headerLength = strtol(tempHex2, NULL, 16);
-
-    bzero(tempHex2, 4);
-
-    binary2hex(myPack.totalPacketLength, 4, tempHex2);
-    long int totalPacketLength = strtol(tempHex2, NULL, 16);
-
-    mmemmove(&tempRequest, myPack.body, totalPacketLength - headerLength);
-    // Shouldn't it be PACKET_LENGTH, should be totaPacketLength - headerLength
 }
 
 //Test later
 void gen_ACK(int ackNum){
 
-    byte_buf tempRequest;
-    uint8_t Request[PACKET_LENGTH];
-    uint8_t magicNumber[2];
-    uint8_t versionNumber[1] = {VERSION_NUMBER};
-    uint8_t packetType[1] = {DATA_TYPE};
-    uint8_t headerLength[2];
-    uint8_t totalPacketLength[2];
-    uint8_t sequenceNumber[4] = {0,0,0,0};
-    uint8_t ackNumber[4];
+  byte_buf tempRequest;
+  uint8_t Request[PACKET_LENGTH];
+  uint8_t magicNumber[2];
+  uint8_t versionNumber[1] = {VERSION_NUMBER};
+  uint8_t packetType[1] = {DATA_TYPE};
+  uint8_t headerLength[2];
+  uint8_t totalPacketLength[2];
+  uint8_t sequenceNumber[4] = {0,0,0,0};
+  uint8_t ackNumber[4];
 
+
+  bzero(magicNumber, 2);
+  bzero(headerLength, 2);
+  bzero(totalPacketLength, 2);
+  bzero(ackNumber, 4);
+  bzero(tempRequest.buf, PACKET_LENGTH);
+
+  tempRequest.pos = 0;
+
+  dec2hex2binary(MAGIC_NUMBER, 4, magicNumber);
+  dec2hex2binary(HEADER, 4, headerLength);
+  dec2hex2binary(HEADER + DATA_LENGTH, 4, totalPacketLength);
+  dec2hex2binary(ackNum, 8, ackNumber);
+
+  mmemcat(&tempRequest, magicNumber,       2);
+  mmemcat(&tempRequest, versionNumber,     1);
+  mmemcat(&tempRequest, packetType,        1);
+  mmemcat(&tempRequest, headerLength,      2);
+  mmemcat(&tempRequest, totalPacketLength, 2);
+  mmemcat(&tempRequest, sequenceNumber,    4);
+  mmemcat(&tempRequest, ackNumber,         4);
+
+  memcpy(Request, tempRequest.buf, PACKET_LENGTH);
+}
+
+//Test later
+/*
+
+  !!  Generate data segments in multiples of 1000 bytes.
+
+
+ */
+void gen_DATA(uint8_t *chunkHash){
+
+  int id;
+  uint8_t buf[CHUNK_SIZE];
+  uint8_t tempBuf[DATA_LENGTH];
+  bzero(buf, CHUNK_SIZE);
+  chunk_table *lookup;
+  byte_buf tempRequest;
+
+  HASH_FIND(hh, has_chunks, chunkHash, 20, lookup);
+
+  if(lookup == NULL){
+    //Error!
+  } else {
+    id = (int)lookup->id;
+  }
+
+  FILE *fp = fopen(master_data_file, "r");
+
+  if(!(fseek(fp, id * CHUNK_SIZE, 0))){
+    //Error!
+  }
+
+  if(fread((char *)buf, 1, CHUNK_SIZE, fp) == 0){ //BROKEN
+    //Short count!
+  }
+
+  int numPacket = 512;
+  int packCounter = 0;
+  int bufPos = 0;
+  int seqNumber = 1;
+
+  uint8_t *Requests[numPacket];
+
+  for(int i = 0; i < numPacket; i++){
+    Requests[i] = malloc(PACKET_LENGTH);
+  }
+
+  uint8_t magicNumber[2];
+  uint8_t versionNumber[1] = {VERSION_NUMBER};
+  uint8_t packetType[1] = {DATA_TYPE};
+  uint8_t headerLength[2];
+  uint8_t totalPacketLength[2];
+  uint8_t sequenceNumber[4];
+  uint8_t ackNumber[4] = {0,0,0,0};
+
+  while(packCounter < numPacket){
 
     bzero(magicNumber, 2);
     bzero(headerLength, 2);
     bzero(totalPacketLength, 2);
-    bzero(ackNumber, 4);
+    bzero(sequenceNumber, 4);
+    bzero(tempBuf, DATA_LENGTH);
     bzero(tempRequest.buf, PACKET_LENGTH);
 
     tempRequest.pos = 0;
 
+    memcpy(tempBuf, buf + bufPos, DATA_LENGTH);
     dec2hex2binary(MAGIC_NUMBER, 4, magicNumber);
     dec2hex2binary(HEADER, 4, headerLength);
     dec2hex2binary(HEADER + DATA_LENGTH, 4, totalPacketLength);
-    dec2hex2binary(ackNum, 8, ackNumber);
+    dec2hex2binary(seqNumber, 8, sequenceNumber);
 
     mmemcat(&tempRequest, magicNumber,       2);
     mmemcat(&tempRequest, versionNumber,     1);
@@ -220,87 +302,12 @@ void gen_ACK(int ackNum){
     mmemcat(&tempRequest, totalPacketLength, 2);
     mmemcat(&tempRequest, sequenceNumber,    4);
     mmemcat(&tempRequest, ackNumber,         4);
+    mmemcat(&tempRequest, tempBuf, DATA_LENGTH);
 
-    memcpy(Request, tempRequest.buf, PACKET_LENGTH);
-}
-
-//Test later
-void gen_DATA(uint8_t *chunkHash){
-
-    int id;
-    uint8_t buf[CHUNK_SIZE];
-    uint8_t tempBuf[DATA_LENGTH];
-    bzero(buf, CHUNK_SIZE);
-    chunk_table *lookup;
-    byte_buf tempRequest;
-
-    HASH_FIND(hh, has_chunks, chunkHash, 20, lookup);
-
-    if(lookup == NULL){
-        //Error!
-    } else {
-        id = (int)lookup->id;
-    }
-
-    FILE *fp = fopen(master_data_file, "r");
-
-    if(!(fseek(fp, id * CHUNK_SIZE, 0))){
-        //Error!
-    }
-
-    if(fread((char *)buf, 1, CHUNK_SIZE, fp) == 0){ //BROKEN
-        //Short count!
-    }
-
-    int numPacket = 512;
-    int packCounter = 0;
-    int bufPos = 0;
-    int seqNumber = 1;
-
-    uint8_t *Requests[numPacket];
-
-    for(int i = 0; i < numPacket; i++){
-        Requests[i] = malloc(PACKET_LENGTH);
-    }
-
-    uint8_t magicNumber[2];
-    uint8_t versionNumber[1] = {VERSION_NUMBER};
-    uint8_t packetType[1] = {DATA_TYPE};
-    uint8_t headerLength[2];
-    uint8_t totalPacketLength[2];
-    uint8_t sequenceNumber[4];
-    uint8_t ackNumber[4] = {0,0,0,0};
-
-    while(packCounter < numPacket){
-
-        bzero(magicNumber, 2);
-        bzero(headerLength, 2);
-        bzero(totalPacketLength, 2);
-        bzero(sequenceNumber, 4);
-        bzero(tempBuf, DATA_LENGTH);
-        bzero(tempRequest.buf, PACKET_LENGTH);
-
-        tempRequest.pos = 0;
-
-        memcpy(tempBuf, buf + bufPos, DATA_LENGTH);
-        dec2hex2binary(MAGIC_NUMBER, 4, magicNumber);
-        dec2hex2binary(HEADER, 4, headerLength);
-        dec2hex2binary(HEADER + DATA_LENGTH, 4, totalPacketLength);
-        dec2hex2binary(seqNumber, 8, sequenceNumber);
-
-        mmemcat(&tempRequest, magicNumber,       2);
-        mmemcat(&tempRequest, versionNumber,     1);
-        mmemcat(&tempRequest, packetType,        1);
-        mmemcat(&tempRequest, headerLength,      2);
-        mmemcat(&tempRequest, totalPacketLength, 2);
-        mmemcat(&tempRequest, sequenceNumber,    4);
-        mmemcat(&tempRequest, ackNumber,         4);
-        mmemcat(&tempRequest, tempBuf, DATA_LENGTH);
-
-        memcpy(Requests[packCounter], tempRequest.buf, PACKET_LENGTH);
-        packCounter++;
-        bufPos += DATA_LENGTH;
-    }
+    memcpy(Requests[packCounter], tempRequest.buf, PACKET_LENGTH);
+    packCounter++;
+    bufPos += DATA_LENGTH;
+  }
 }
 
 /* Generates a WHOHAS/IHAVE/GET request (more than one if necessary). Each
@@ -313,71 +320,71 @@ void gen_DATA(uint8_t *chunkHash){
  */
 void gen_WHOIGET(ll *list, int packetCode){
 
-    int numHashes = list->count;
-    int numPacket = (numHashes / MAX_NUM_HASH) + 1;
-    int packCounter = 0;
-    int tempNumHashes;
-    uint8_t Requests[numPacket][PACKET_LENGTH]; //Malloc this later
-    node *temp = list->first;
-    byte_buf tempRequest;
+  int numHashes = list->count;
+  int numPacket = (numHashes / MAX_NUM_HASH) + 1;
+  int packCounter = 0;
+  int tempNumHashes;
+  uint8_t Requests[numPacket][PACKET_LENGTH]; //Malloc this later
+  node *temp = list->first;
+  byte_buf tempRequest;
 
-    /*
+  /*
     if(packetCode == 2){
-        ASSERT(numHashes == 1);
+    ASSERT(numHashes == 1);
     }
-    */
+  */
 
-    uint8_t magicNumber[2];
-    uint8_t versionNumber[1] = {VERSION_NUMBER};
-    uint8_t packetType[1] = {packetCode};
-    uint8_t headerLength[2];
-    uint8_t totalPacketLength[2];
-    uint8_t sequenceNumber[4] = {0,0,0,0};
-    uint8_t ackNumber[4] = {0,0,0,0};
-    uint8_t padding[3] = {0,0,0};
-    uint8_t numberHashes[1];
+  uint8_t magicNumber[2];
+  uint8_t versionNumber[1] = {VERSION_NUMBER};
+  uint8_t packetType[1] = {packetCode};
+  uint8_t headerLength[2];
+  uint8_t totalPacketLength[2];
+  uint8_t sequenceNumber[4] = {0,0,0,0};
+  uint8_t ackNumber[4] = {0,0,0,0};
+  uint8_t padding[3] = {0,0,0};
+  uint8_t numberHashes[1];
 
 
-    while(packCounter < numPacket){
-        if(numPacket == packCounter + 1){
-            tempNumHashes = numHashes;
-        } else {
-            tempNumHashes = MAX_NUM_HASH;
-        }
-
-        bzero(tempRequest.buf, PACKET_LENGTH);
-        bzero(magicNumber, 2);
-        bzero(headerLength, 2);
-        bzero(totalPacketLength, 2);
-        bzero(numberHashes, 1);
-
-        tempRequest.pos = 0;
-
-        dec2hex2binary(MAGIC_NUMBER, 4, magicNumber);
-        dec2hex2binary(HEADER, 4, headerLength);
-        dec2hex2binary(HEADER + CHUNK * tempNumHashes + 4, 4,
-                                                        totalPacketLength);
-        dec2hex2binary(tempNumHashes, 2, numberHashes);
-
-        mmemcat(&tempRequest, magicNumber,       2);
-        mmemcat(&tempRequest, versionNumber,     1);
-        mmemcat(&tempRequest, packetType,        1);
-        mmemcat(&tempRequest, headerLength,      2);
-        mmemcat(&tempRequest, totalPacketLength, 2);
-        mmemcat(&tempRequest, sequenceNumber,    4);
-        mmemcat(&tempRequest, ackNumber,         4);
-        mmemcat(&tempRequest, numberHashes,      1);
-        mmemcat(&tempRequest, padding,           3);
-
-        while(temp != NULL){
-          mmemcat(&tempRequest, temp->data, CHUNK); // !! USE add_node from ds.c
-            temp = temp->next;
-        }
-
-        memcpy(Requests[packCounter], tempRequest.buf, PACKET_LENGTH);
-        packCounter++;
-        numHashes -= MAX_NUM_HASH;
+  while(packCounter < numPacket){
+    if(numPacket == packCounter + 1){
+      tempNumHashes = numHashes;
+    } else {
+      tempNumHashes = MAX_NUM_HASH;
     }
+
+    bzero(tempRequest.buf, PACKET_LENGTH);
+    bzero(magicNumber, 2);
+    bzero(headerLength, 2);
+    bzero(totalPacketLength, 2);
+    bzero(numberHashes, 1);
+
+    tempRequest.pos = 0;
+
+    dec2hex2binary(MAGIC_NUMBER, 4, magicNumber);
+    dec2hex2binary(HEADER, 4, headerLength);
+    dec2hex2binary(HEADER + CHUNK * tempNumHashes + 4, 4,
+                   totalPacketLength);
+    dec2hex2binary(tempNumHashes, 2, numberHashes);
+
+    mmemcat(&tempRequest, magicNumber,       2);
+    mmemcat(&tempRequest, versionNumber,     1);
+    mmemcat(&tempRequest, packetType,        1);
+    mmemcat(&tempRequest, headerLength,      2);
+    mmemcat(&tempRequest, totalPacketLength, 2);
+    mmemcat(&tempRequest, sequenceNumber,    4);
+    mmemcat(&tempRequest, ackNumber,         4);
+    mmemcat(&tempRequest, numberHashes,      1);
+    mmemcat(&tempRequest, padding,           3);
+
+    while(temp != NULL){
+      mmemcat(&tempRequest, temp->data, CHUNK); // !! USE add_node from ds.c
+      temp = temp->next;
+    }
+
+    memcpy(Requests[packCounter], tempRequest.buf, PACKET_LENGTH);
+    packCounter++;
+    numHashes -= MAX_NUM_HASH;
+  }
 }
 
 /* #ifdef TESTING */
