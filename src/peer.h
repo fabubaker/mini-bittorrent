@@ -37,7 +37,7 @@ struct chunk_table {
 
   uint8_t*       data;      // Store the data represented by the chunk here
   bool           requested; // Has this chunk been requested?
-  bool           gotcha;    // Have we received this chunk?
+  bool           gotcha;    // Have we received this chunk (fully)?
 
   /* Format:     "address:port" */
   char            whohas[PEER_KEY_LEN]; // The peer from which to 'GET'

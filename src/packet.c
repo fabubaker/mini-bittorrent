@@ -244,7 +244,7 @@ void gen_ACK(int ackNum){
   bzero(magicNumber, 2);
   bzero(headerLength, 2);
   bzero(totalPacketLength, 2);
-  bzero(ackNumber, 4); 
+  bzero(ackNumber, 4);
 
   dec2hex2binary(MAGIC_NUMBER, 4, magicNumber);
   dec2hex2binary(HEADER, 4, headerLength);
@@ -364,15 +364,11 @@ void gen_DATA(uint8_t **Requests, uint8_t *chunkHash){
  *      chunks and a first node, which corresponds to the first chunk.
  *      4. packetCode: 0 for WHOHAS, 1 for IHAVE, 2 for GET (the real GET).
  */
-<<<<<<< HEAD
-void gen_WHOIGET(uint8_t **Requests, int size, ll *list, int packetCode){
-=======
-
 /*
- * What should this return? Hmmm.....
- * Why not return a linked list of packets to be sent?
+ *      What should this return? Hmmm.....
+ *      Why not return a linked list of packets to be sent?
  */
-void gen_WHOIGET(ll *list, int packetCode){
+void gen_WHOIGET(uint8_t **Requests, int size, ll *list, int packetCode){
 
   int numHashes = list->count;
   int numPacket = (numHashes / MAX_NUM_HASH) + 1;

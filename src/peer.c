@@ -159,13 +159,25 @@ void process_inbound_udp(int sock) {
   /* If there is data, parse it */
   parse_data(&packetinfo, find);
 
+  /* Weeee! */
+  sliding_send(&packetinfo, find);
 
-
+  /* Everytime a chunk has been fully received,
+   * delete it from the hash table, but only
+   * after writing its data to the file.
+   * Use HASH_COUNT to determine if there are any chunks
+   * left to be received
+   */
 }
 
 void process_get(char *chunkfile, char *outputfile) {
-  printf("PROCESS GET SKELETON CODE CALLED.  Fill me in!  (%s, %s)\n",
-         chunkfile, outputfile);
+  if (!get_chunks)
+    return;
+
+  output_file = malloc(strlen(outputfile));
+  strcpy(output_file, outputfile);
+
+  make_chunktable(chunkfile, &get_chunks, 2);
 }
 
 void handle_user_input(char *line, void *cbdata) {
@@ -250,13 +262,15 @@ void convert_LL2HT(bt_peer_t* ll_peers, peer** ht_peers)
 }
 
 
-/************************************************************************/
-/* @brief Takes a file containing lines with <id chunk-hash> and stores */
-/*        them in a hash table, with the hashes as key.                 */
-/* @param chunk_file The file containing the <id chunk-hash> lines.     */
-/* @param table      The table to populate                              */
-/* @param flag       To indicate a master-chunk-file or not.            */
-/************************************************************************/
+
+/*********************************************************************************/
+/* @brief Takes a file containing lines with <id chunk-hash> and stores          */
+/*        them in a hash table, with the hashes as key.                          */
+/* @param chunk_file The file containing the <id chunk-hash> lines.              */
+/* @param table      The table to populate                                       */
+/* @param flag       To indicate a master-chunk-file or a get-chunk-file or not. */
+/*********************************************************************************/
+
 void make_chunktable(char* chunk_file, chunk_table** table, int flag)
 {
   FILE* file;
@@ -283,12 +297,34 @@ void make_chunktable(char* chunk_file, chunk_table** table, int flag)
       sscanf(buf, "%zu %s", &tmptable->id, tmpbuf);
       ascii2hex(tmpbuf, HASH_SIZE+10, tmptable->chunk);
 
+      if(flag == 2)
+        tmptable->data = calloc(1, CHUNK_SIZE); // To store incoming DATA packs
+      else
+        tmptable->data = NULL;
+
+      tmptable->requested = false;
+      tmptable->gotcha =  false;
+
+      bzero(tmptable->whohas, PEER_KEY_LEN);
+
       HASH_ADD(hh, *table, chunk, HASH_SIZE, tmptable);
     }
 
   free(buf);
   return;
 }
+
+/***************************************************************************/
+/* @brief Sends packets to peer p according to the sliding window protocol */
+/*        state                                                            */
+/* @param packetinfo Contains the details of the packet to be sent         */
+/* @p     The peer state                                                   */
+/***************************************************************************/
+void sliding_send(packet_info* packetinfo, peer* p)
+{
+
+}
+
 
 /*
   Notes:
