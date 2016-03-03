@@ -67,8 +67,8 @@ void mmemclear(byte_buf *buf);
 
 void dec2hex2binary(int decimalNumber, int bytesNeeded, uint8_t* binaryNumber);
 
-void gen_WHOIGET(uint8_t **Requests, int size, ll *list, int packetCode);
-void gen_DATA(uint8_t **Requests, uint8_t *chunkHash);
+ll* gen_WHOIGET(ll *list, int packetCode);
+ll* gen_DATA(uint8_t *chunkHash);
 void parse_packet(uint8_t *packet, packet_info* myPack);
 
 

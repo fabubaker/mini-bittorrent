@@ -43,19 +43,6 @@ struct byte_buf* create_bytebuf(size_t bufsize)
   return b;
 }
 
-/*
-
-  I've changed the order of mmemmove's arguments for the sake of consistency.
-
-  It should be mmemmove(dest, src, size), which is the format followed by
-  every copy function in the C library
-
-  It was mmemmove(src, dest, size). :/
-
-  You might wanna change your mmemove call arguments in the fxns you've
-  written
-*/
-
 void mmemmove(uint8_t *binaryNumber, byte_buf *tempRequest, int size){
   memmove(binaryNumber, tempRequest->buf + tempRequest->pos, size);
   tempRequest->pos += size;
@@ -115,13 +102,7 @@ void dec2hex2binary(int decimalNumber, int bytesNeeded, uint8_t* binaryNumber){
   hex2binary(hexadecimalNumber, bytesNeeded, binaryNumber);
 }
 
-// Still haven't returned the parsed stuff
-// Test later
-// Will only call this function if I have at least
-// 16 bytes (minimum packet header size) as a packet.
-/*
-  !! Should populate the given packet_info
-*/
+
 /* Pareses a given, complete packet.
  * Arguments:
  *      1. packet: The actual packet to be parsed.
@@ -175,63 +156,14 @@ void parse_packet(uint8_t *packet, packet_info* myPack){
   mmemmove(myPack->body, tempRequest, totalPacketLength - headerLength);
 }
 
-/* Takes a packet_info and parses the data accordingly */
-/*
-  Should return a pointer to a linked list or something.
-  Or at least populate p's 'tosend' field.
- */
-void parse_data(packet_info* packetinfo, peer* p)
-{
-  /*
-    // IF WHOHAS
-       extract chunk;
-       check if chunk exists in has_chunks
-       create linked list of request chunks that we have
-       call gen_WHOIGET with IHAVE and pass in the linked list
-       should return a linked list of packets to send
-       use sendto to send the packets
-
-    // IF IHAVE
-       extract chunk;
-       add chunk to the hash table 'p->has_chunks';
-       Lookup chunk in 'get_chunks';
-       if that chunk has not yet been requested, change the whohas field to
-       identify this peer.
-       I'll send a GET to him later.
-       I'll put in a timer to retransmit the GET after 5 seconds.
-    }
-
-    // IF GET
-       extract the chunk;
-       check if we have it;
-       If we don't, deny him. eheheh.
-       if we do, send it.
-
-    // IF DATA
-       Gonna have to do some flow control logic here;
-       extract the data and store it in a 512KB buffer.
-       How are we gonna know we recevied the entire chunk of data?
-       ANS: use a goddamn bytebuf. when pos = 512KB, we hit gold.
-       Perform a checksum afterwards, if badhash, send GET again,
-       else write the data into a file using fseek and all.
-
-
-  //  IF ACK
-      Flow control logikz.
-
-  // IF DENIED
-     ???
-
-  */
-}
-
 //Test later
-void gen_ACK(int ackNum){
+ll* gen_ACK(int ackNum){
 
   byte_buf *tempRequest = create_bytebuf(PACKET_LENGTH);
   mmemclear(tempRequest);
+  ll* myLL = create_ll();
+  myLL->count = 1;
 
-  uint8_t Request[PACKET_LENGTH];
   uint8_t magicNumber[2];
   uint8_t versionNumber[1] = {VERSION_NUMBER};
   uint8_t packetType[1] = {DATA_TYPE};
@@ -259,23 +191,17 @@ void gen_ACK(int ackNum){
   mmemcat(tempRequest, sequenceNumber,    4);
   mmemcat(tempRequest, ackNumber,         4);
 
-  memcpy(Request, tempRequest->buf, PACKET_LENGTH);
+  add_node(myLL, tempRequest->buf, HEADER + DATA_LENGTH);
+  return myLL;
 }
 
-//Test later
-/*
-
-  !!  Generate data segments in multiples of 1000 bytes.
-  !!  Uh, duh?
-
- */
 //Test later
 /* Generates a complete set of DATA packets for an entire chunk.
  * Arguments:
  *      1. Requests: Array of uint8_ts. Must have space for at least 512 spots.
  *      2. chunkHash: The required chunk to send.
  */
-void gen_DATA(uint8_t **Requests, uint8_t *chunkHash){
+ll* gen_DATA(uint8_t *chunkHash){
 
   byte_buf *tempRequest = create_bytebuf(PACKET_LENGTH);
   mmemclear(tempRequest);
@@ -285,7 +211,8 @@ void gen_DATA(uint8_t **Requests, uint8_t *chunkHash){
   uint8_t tempBuf[DATA_LENGTH];
   bzero(buf, CHUNK_SIZE);
   chunk_table *lookup;
-
+  ll *myLL = create_ll();
+  myLL->count = 512;
 
   HASH_FIND(hh, has_chunks, chunkHash, 20, lookup);
 
@@ -309,10 +236,6 @@ void gen_DATA(uint8_t **Requests, uint8_t *chunkHash){
   int packCounter = 0;
   int bufPos = 0;
   int seqNumber = 1;
-
-  for(int i = 0; i < numPacket; i++){
-    Requests[i] = malloc(PACKET_LENGTH);
-  }
 
   uint8_t magicNumber[2];
   uint8_t versionNumber[1] = {VERSION_NUMBER};
@@ -346,42 +269,30 @@ void gen_DATA(uint8_t **Requests, uint8_t *chunkHash){
     mmemcat(tempRequest, ackNumber,         4);
     mmemcat(tempRequest, tempBuf, DATA_LENGTH);
 
-    memcpy(Requests[packCounter], tempRequest->buf, PACKET_LENGTH);
+    add_node(myLL, tempRequest->buf, HEADER + DATA_LENGTH);
     packCounter++;
     bufPos += DATA_LENGTH;
   }
+  return myLL;
 }
 
 /* Generates a WHOHAS/IHAVE/GET request (more than one if necessary). Each
  * packet has its own header. Which request is generated depends on the
  * packetCode argument.
  * Arguments:
- *      1. Requests: Array of uint8_ts. The size of the array is determined
- *      beforehand. (Eg: uint8_t *Requests[size])
- *      2. size: The number of uint8_t the array can hold. Must be at least
- *      the number of packets to be generated.
- *      3. list: Pre-processed linked list. The head contains the number of
+ *      1. list: Pre-processed linked list. The head contains the number of
  *      chunks and a first node, which corresponds to the first chunk.
- *      4. packetCode: 0 for WHOHAS, 1 for IHAVE, 2 for GET (the real GET).
+ *      2. packetCode: 0 for WHOHAS, 1 for IHAVE, 2 for GET (the real GET).
  */
-/*
- *      What should this return? Hmmm.....
- *      Why not return a linked list of packets to be sent?
- */
-void gen_WHOIGET(uint8_t **Requests, int size, ll *list, int packetCode){
+ll* gen_WHOIGET(ll *list, int packetCode){
 
   int numHashes = list->count;
   int numPacket = (numHashes / MAX_NUM_HASH) + 1;
   int packCounter = 0;
   int tempNumHashes;
 
-  if(size != numPacket){
-    //Error
-  }
-
-  for(int i = 0; i < numPacket; i++){
-    Requests[i] = malloc(PACKET_LENGTH);
-  }
+  ll *myLL = create_ll();
+  myLL->count = numPacket;
 
   node *temp = list->first;
   byte_buf *tempRequest = create_bytebuf(PACKET_LENGTH);
@@ -439,10 +350,62 @@ void gen_WHOIGET(uint8_t **Requests, int size, ll *list, int packetCode){
       temp = temp->next;
     }
 
-    memcpy(Requests[packCounter], tempRequest->buf, PACKET_LENGTH);
+    add_node(myLL, tempRequest->buf, HEADER + CHUNK * tempNumHashes + 4);
     packCounter++;
     numHashes -= MAX_NUM_HASH;
   }
+  return myLL;
+}
+
+
+/* Takes a packet_info and parses the data accordingly */
+/*
+  Should return a pointer to a linked list or something.
+  Or at least populate p's 'tosend' field.
+ */
+void parse_data(packet_info* packetinfo, peer* p)
+{
+  /*
+    // IF WHOHAS
+       extract chunk;
+       check if chunk exists in has_chunks
+       create linked list of request chunks that we have
+       call gen_WHOIGET with IHAVE and pass in the linked list
+       should return a linked list of packets to send
+       use sendto to send the packets
+
+    // IF IHAVE
+       extract chunk;
+       add chunk to the hash table 'p->has_chunks';
+       Lookup chunk in 'get_chunks';
+       if that chunk has not yet been requested, change the whohas field to
+       identify this peer.
+       I'll send a GET to him later.
+       I'll put in a timer to retransmit the GET after 5 seconds.
+    }
+
+    // IF GET
+       extract the chunk;
+       check if we have it;
+       If we don't, deny him. eheheh.
+       if we do, send it.
+
+    // IF DATA
+       Gonna have to do some flow control logic here;
+       extract the data and store it in a 512KB buffer.
+       How are we gonna know we recevied the entire chunk of data?
+       ANS: use a goddamn bytebuf. when pos = 512KB, we hit gold.
+       Perform a checksum afterwards, if badhash, send GET again,
+       else write the data into a file using fseek and all.
+
+
+  //  IF ACK
+      Flow control logikz.
+
+  // IF DENIED
+     ???
+
+  */
 }
 
 /* #ifdef TESTING */
