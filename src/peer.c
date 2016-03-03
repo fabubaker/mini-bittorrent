@@ -106,26 +106,42 @@ void peer_run(bt_config_t *config) {
                              "Currently unused");
         }
 
-      /* Loop over the client hash table */
-      for(peer* i = peer_list; i != NULL; i = i->hh.next)
-        {
-
-        }
 
     }
   }
 }
 
-
-@brief Process incoming UDP data and store it in a
+/*
+@brief Process incoming UDP data and store it in the peer state
+*/
 void process_inbound_udp(int sock) {
 #define BUFLEN 1500
+  peer* find;
   struct sockaddr_in from;
   socklen_t fromlen;
   uint8_t buf[BUFLEN];
+  char    keybuf[PEER_KEY_LEN];
+
+  bzero(buf, BUFLEN);
+  bzero(keybuf, PEER_KEY_LEN);
 
   fromlen = sizeof(from);
   recvfrom(sock, buf, BUFLEN, 0, (struct sockaddr *) &from, &fromlen);
+
+  sprintf(keybuf, "%s:%d",
+          inet_ntoa(from->addr.sin_addr),
+          ntohs(from->addr.sin_port));
+
+  HASH_FIND_STR( peer_list, keybuf, find );
+
+  if(find == NULL)
+    {
+      printf("We have problem! \n");
+      exit(0);
+    }
+
+  /* Save it in the peer state to be processed later */
+  mmemmove(buf, find->buf->buf, BUFLEN);
 
   printf("PROCESS_INBOUND_UDP SKELETON -- replace!\n"
          "Incoming message from %s:%d\n%s\n\n",
@@ -256,6 +272,17 @@ void make_chunktable(char* chunk_file, chunk_table** table, int flag)
 
   free(buf);
   return;
+}
+
+/* This is where all the magic happens.
+   All the gen_* and parse_* functions are called in here.
+   This function generates packets and sends them to the respective
+   peer based on a sliding windows protocol.
+ */
+void peer_process(peer* p)
+{
+
+
 }
 
 /*

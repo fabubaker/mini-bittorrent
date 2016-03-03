@@ -37,10 +37,26 @@ struct byte_buf* create_bytebuf(size_t bufsize)
 
   b->cur = 0;
   bzero(b->buf, bufsize+1);
+
+  b->bufsize = bufsize;
+
   return b;
 }
 
-void mmemmove(byte_buf *tempRequest, uint8_t *binaryNumber, int size){
+/*
+
+  I've changed the order of mmemmove's arguments for the sake of consistency.
+
+  It should be mmemmove(dest, src, size), which is the format followed by
+  every copy function in the C library
+
+  It was mmemmove(src, dest, size). :/
+
+  You might wanna change your mmemove call arguments in the fxns you've
+  written
+*/
+
+void mmemmove(uint8_t *binaryNumber, byte_buf *tempRequest, int size){
     memmove(binaryNumber, tempRequest->buf + tempRequest->pos, size);
     tempRequest->pos += size;
 }
@@ -48,6 +64,12 @@ void mmemmove(byte_buf *tempRequest, uint8_t *binaryNumber, int size){
 void mmemcat(byte_buf *tempRequest, uint8_t *binaryNumber, int size){
     memmove(tempRequest->buf + tempRequest->pos, binaryNumber, size);
     tempRequest->pos += size;
+}
+
+void mmemclear(byte_buf *buf)
+{
+  buf->pos = 0;
+  bzero(b->buf, b->bufsize);
 }
 
 /* First converts decimalNumber from decimal to hex. Next, it passes the
@@ -348,7 +370,7 @@ void gen_WHOIGET(ll *list, int packetCode){
         mmemcat(&tempRequest, padding,           3);
 
         while(temp != NULL){
-            mmemcat(&tempRequest, temp->data, CHUNK);
+          mmemcat(&tempRequest, temp->data, CHUNK); // !! USE add_node from ds.c
             temp = temp->next;
         }
 

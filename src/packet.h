@@ -40,6 +40,7 @@
 struct byte_buf {
   uint8_t buf[PACKET_LENGTH];
   int pos;
+  size_t bufsize;
 };
 
 struct packet_info {
@@ -67,5 +68,7 @@ void gen_WHOIGET(ll *list, int packetCode);
 void gen_DATA(uint8_t *chunkHash);
 
 struct byte_buf*  create_bytebuf(size_t bufsize);
+void              delete_bytebuf(struct byte_buf* buf);
+void              feed_bytebuf();
 
 #endif
