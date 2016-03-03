@@ -35,7 +35,9 @@ struct chunk_table {
   uint8_t        chunk[HASH_SIZE];  // Key
   size_t         id;
 
-  uint8_t*       data;      // Store the data represented by the chunk here
+  struct timeval start_time;
+
+  byte_buf       data;      // Store the data represented by the chunk here
   bool           requested; // Has this chunk been requested?
   bool           gotcha;    // Have we received this chunk (fully)?
 
@@ -49,7 +51,6 @@ struct chunk_table {
 struct peer {
 
   int                id;
-  int                timeoutfd;
 
   /* Format:         "address:port" */
   char               key[PEER_KEY_LEN];
@@ -58,7 +59,8 @@ struct peer {
   chunk_table*       has_chunks;
   struct byte_buf*   buf;
   ll*                tosend; // A linked list of packets to send to this peer
-
+  uint8_t            lastsent[HASH_SIZE]; // identifies the chunkhash of the last DATA pack
+                                          // sent by this peer.
   /* Flow control/reliability state
      Note: use only for DATA packets
    */

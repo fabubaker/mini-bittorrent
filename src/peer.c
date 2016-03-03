@@ -87,12 +87,17 @@ void peer_run(bt_config_t *config) {
 
   //  spiffy_init(config->identity, (struct sockaddr *)&myaddr, sizeof(myaddr));
 
+  struct timeval tv;
+  tv.tv_sec  = 10;
+  tv.tv_usec = 500000; // 10.5 seconds in the beginning
+
   while (1) {
     int nfds;
+
     FD_SET(STDIN_FILENO, &readfds);
     FD_SET(sock, &readfds);
 
-    nfds = select(sock+1, &readfds, NULL, NULL, NULL);
+    nfds = select(sock+1, &readfds, NULL, NULL, &tv);
 
     if (nfds > 0) {
       if (FD_ISSET(sock, &readfds))
@@ -105,9 +110,9 @@ void peer_run(bt_config_t *config) {
           process_user_input(STDIN_FILENO, userbuf, handle_user_input,
                              "Currently unused");
         }
-
-
     }
+
+    /* Insert code here to update 'tv' */
   }
 }
 
@@ -160,13 +165,13 @@ void process_inbound_udp(int sock) {
   parse_data(&packetinfo, find);
 
   /* Weeee! */
-  sliding_send(&packetinfo, find);
+  sliding_send(find);
 
   /* Everytime a chunk has been fully received,
    * delete it from the hash table, but only
    * after writing its data to the file.
    * Use HASH_COUNT to determine if there are any chunks
-   * left to be received
+   * left to be received.
    */
 }
 
@@ -219,7 +224,6 @@ void global_populate(bt_config_t* config)
 
   /* Open the has_chunks file and make a hash table out of it  */
   make_chunktable(config->has_chunk_file, &has_chunks, 1);
-
 }
 
 
@@ -239,7 +243,6 @@ void convert_LL2HT(bt_peer_t* ll_peers, peer** ht_peers)
       tmppeer = calloc(1, sizeof(peer));
 
       tmppeer->id = cur->id;
-      tmppeer->timeoutfd = -1;
 
       sprintf(tmppeer->key, "%s:%d",
               inet_ntoa(cur->addr.sin_addr),
@@ -276,7 +279,6 @@ void make_chunktable(char* chunk_file, chunk_table** table, int flag)
   FILE* file;
   char* buf = calloc(1, 3*HASH_SIZE);
   size_t n = 3*HASH_SIZE;
-
   ssize_t len = 0;
   chunk_table* tmptable = NULL;
 
@@ -298,7 +300,7 @@ void make_chunktable(char* chunk_file, chunk_table** table, int flag)
       ascii2hex(tmpbuf, HASH_SIZE+10, tmptable->chunk);
 
       if(flag == 2)
-        tmptable->data = calloc(1, CHUNK_SIZE); // To store incoming DATA packs
+        tmptable->data = create_bytebuf(CHUNK_SIZE); // To store incoming DATA packs
       else
         tmptable->data = NULL;
 
