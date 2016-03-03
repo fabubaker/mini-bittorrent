@@ -34,6 +34,11 @@ struct chunk_table {
 
   uint8_t        chunk[HASH_SIZE];  // Key
   size_t         id;
+  bool           requested; // Has this chunk been requested?
+  bool           gotcha;    // Have we recevied this chunk?
+  /* Format:     "address:port" */
+  char            whohas[PEER_KEY_LEN]; // The peer from which to 'GET'
+
   UT_hash_handle hh;
 
 };

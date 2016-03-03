@@ -151,7 +151,7 @@ void process_inbound_udp(int sock) {
          buf);
 
   packet_info packetinfo;
-  bzero();
+  bzero(packetinfo, sizeof(packetinfo));
 
   /* Store all packet information in the struct below */
   parse_packet(find->buf, &packetinfo);
@@ -287,7 +287,7 @@ void make_chunktable(char* chunk_file, chunk_table** table, int flag)
 /* This is where all the magic happens.
    All the gen_* and parse_* functions are called in here.
    This function generates packets and sends them to the respective
-   peer based on a sliding windows protocol.
+   peer based on a sliding window protocol.
  */
 void peer_process(peer* p)
 {
