@@ -173,18 +173,47 @@ void parse_packet(bytebuf* packetbuf, packet_info* packetinfo){
 /* Takes a packet_info and parses the data accordingly */
 void parse_data(packet_info* packetinfo, peer* p)
 {
-
-  // If WHOHAS
   /*
-    for (i = 0; i < numHash; i++)
-    {
-        extract chunk;
-        check if chunk exists in has_chunks
+    // IF WHOHAS
+       extract chunk;
+       check if chunk exists in has_chunks
+       create linked list of request chunks that we have
+       call gen_WHOIGET with IHAVE and pass in the linked list
+       should return a linked list of packets to send
+       use sendto to send the packets
 
+    // IF IHAVE
+       extract chunk;
+       add chunk to the hash table 'p->has_chunks';
+       Lookup chunk in 'get_chunks';
+       if that chunk has not been requested, change the whohas field to
+       identify this peer.
+       I'll send a GET to him later.
+       I'll put in a timer to retransmit the GET after 5 seconds.
     }
-   */
+
+    // IF GET
+       extract the chunk;
+       check if we have it;
+       If we don't, deny him. eheheh.
+       if we do, send it.
+
+    // IF DATA
+       Gonna have to do some flow control logic here;
+       extract the data and store it in a 512KB buffer.
+       How are we gonna know we recevied the entire chunk of data?
+       ANS: use a goddamn bytebuf. when pos = 512KB, we hit gold.
+       Perform a checksum afterwards, if badhash, send GET again,
+       else write the data into a file using fseek and all.
 
 
+  //  IF ACK
+      Flow control logikz.
+
+  // IF DENIED
+     ???
+
+  */
 }
 
 //Test later
@@ -317,6 +346,11 @@ void gen_DATA(uint8_t *chunkHash){
  *      1. list: Pre-processed linked list. The head contains the number of
  *      chunks and a first node, which corresponds to the first chunk.
  *      2. packetCode: 0 for WHOHAS, 1 for IHAVE, 2 for GET (the real GET).
+ */
+
+/*
+ * What should this return? Hmmm.....
+ * Why not return a linked list of packets to be sent?
  */
 void gen_WHOIGET(ll *list, int packetCode){
 
