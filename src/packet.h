@@ -38,7 +38,7 @@
 /* Structs */
 
 struct byte_buf {
-  uint8_t buf[PACKET_LENGTH];
+  uint8_t *buf;
   int pos;
   size_t bufsize;
 };
@@ -54,20 +54,23 @@ struct packet_info {
     uint8_t numberHashes[1];
     uint8_t padding[3]; // never be used but needed
     // Not the padding we need, but the padding we deserve...
+    // What the hell m8
     uint8_t body[PACKET_LENGTH];
 };
 
 typedef struct byte_buf byte_buf;
 typedef struct packet_info packet_info;
 
-void mmemmove(byte_buf *tempRequest, uint8_t *binaryNumber, int size);
+void mmemmove(uint8_t *binaryNumber, byte_buf *tempRequest, int size);
 void mmemcat(byte_buf *tempRequest, uint8_t *binaryNumber, int size);
 void mmemclear(byte_buf *buf);
 
 void dec2hex2binary(int decimalNumber, int bytesNeeded, uint8_t* binaryNumber);
 
-void gen_WHOIGET(ll *list, int packetCode);
-void gen_DATA(uint8_t *chunkHash);
+void gen_WHOIGET(uint8_t **Requests, int size, ll *list, int packetCode);
+void gen_DATA(uint8_t **Requests, uint8_t *chunkHash);
+void parse_packet(uint8_t *packet, packet_info* myPack);
+
 
 struct byte_buf*  create_bytebuf(size_t bufsize);
 void              delete_bytebuf(struct byte_buf* buf);
