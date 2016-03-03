@@ -69,6 +69,26 @@ void add_node(ll* list, uint8_t* data, size_t n)
   list->count++;
 }
 
+/**********************************************************/
+/* @brief Deletes a node from the head of the linked list */
+/**********************************************************/
+void delete_node(ll* list)
+{
+  node* killme;
+
+  if (list == NULL)
+    return;
+
+  if (list->count == 0)
+    {
+      return;
+    }
+
+  killme      = list->first;
+  list->first = list->first->next;
+  list->count--;
+  free(killme);
+}
 
 /* #ifdef TESTING */
 /* #include <stdlib.h> */

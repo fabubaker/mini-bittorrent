@@ -171,6 +171,10 @@ void parse_packet(bytebuf* packetbuf, packet_info* packetinfo){
 }
 
 /* Takes a packet_info and parses the data accordingly */
+/*
+  Should return a pointer to a linked list or something.
+  Or at least populate p's 'tosend' field.
+ */
 void parse_data(packet_info* packetinfo, peer* p)
 {
   /*
@@ -186,7 +190,7 @@ void parse_data(packet_info* packetinfo, peer* p)
        extract chunk;
        add chunk to the hash table 'p->has_chunks';
        Lookup chunk in 'get_chunks';
-       if that chunk has not been requested, change the whohas field to
+       if that chunk has not yet been requested, change the whohas field to
        identify this peer.
        I'll send a GET to him later.
        I'll put in a timer to retransmit the GET after 5 seconds.
@@ -344,7 +348,8 @@ void gen_DATA(uint8_t *chunkHash){
  * packetCode argument.
  * Arguments:
  *      1. list: Pre-processed linked list. The head contains the number of
- *      chunks and a first node, which corresponds to the first chunk.
+ *      chunks and a first node, which corresponds to the first chunk. The
+ *      list contains chunks to be sent in the packets.
  *      2. packetCode: 0 for WHOHAS, 1 for IHAVE, 2 for GET (the real GET).
  */
 

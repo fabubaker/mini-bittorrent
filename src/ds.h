@@ -11,9 +11,9 @@
 #include <string.h>
 #include <strings.h>
 
-#define DATA_SIZE 512
+#define DATA_SIZE 1500
 
-/* Linked list for storing characters */
+/* Linked list for storing bytes */
 
 typedef struct node node;
 

@@ -156,6 +156,7 @@ void process_inbound_udp(int sock) {
   /* Store all packet information in the struct below */
   parse_packet(find->buf, &packetinfo);
 
+  /* If there is data, parse it */
   parse_data(&packetinfo, find);
 
 
@@ -238,6 +239,11 @@ void convert_LL2HT(bt_peer_t* ll_peers, peer** ht_peers)
 
       tmppeer->has_chunks = NULL;
       tmppeer->buf        = create_bytebuf(PACKET_LENGTH);
+      tmppeer->tosend     = NULL;
+
+      tmppeer->LPAcked    = 0;
+      tmppeer->LPSent     = 0;
+      tmppeer->LPAvail    = 8;
 
       HASH_ADD_STR( *ht_peers, key, tmppeer );
     }
@@ -282,17 +288,6 @@ void make_chunktable(char* chunk_file, chunk_table** table, int flag)
 
   free(buf);
   return;
-}
-
-/* This is where all the magic happens.
-   All the gen_* and parse_* functions are called in here.
-   This function generates packets and sends them to the respective
-   peer based on a sliding window protocol.
- */
-void peer_process(peer* p)
-{
-
-
 }
 
 /*

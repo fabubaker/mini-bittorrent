@@ -34,8 +34,11 @@ struct chunk_table {
 
   uint8_t        chunk[HASH_SIZE];  // Key
   size_t         id;
+
+  uint8_t*       data;      // Store the data represented by the chunk here
   bool           requested; // Has this chunk been requested?
-  bool           gotcha;    // Have we recevied this chunk?
+  bool           gotcha;    // Have we received this chunk?
+
   /* Format:     "address:port" */
   char            whohas[PEER_KEY_LEN]; // The peer from which to 'GET'
 
@@ -54,6 +57,7 @@ struct peer {
 
   chunk_table*       has_chunks;
   struct byte_buf*   buf;
+  ll*                tosend; // A linked list of packets to send to this peer
 
   /* Flow control/reliability state
      Note: use only for DATA packets
