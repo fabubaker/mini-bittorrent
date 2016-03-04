@@ -65,9 +65,9 @@ struct peer {
   /* Flow control/reliability state
      Note: use only for DATA packets
    */
-  int                LPAcked;
-  int                LPSent;
-  int                LPAvail;
+  int                LPAcked; //Last packet Acked
+  int                LPSent;  //Last packet sent
+  int                LPAvail; //Last packet available
   struct timeval     start_time;
 
   UT_hash_handle     hh;

@@ -18,7 +18,7 @@
 #include "peer.h"
 
 #define DATA_LENGTH	    1000  // Size of the data in a DATA packet
-#define CHUNK_SIZE		  512000// Size of a data chunk in bytes
+#define CHUNK_SIZE		512000// Size of a data chunk in bytes
 #define MAX_NUM_HASH    74 	  // Maximum possible number of chunks in a packet
 #define PACKET_LENGTH   1500  // Maximum packet length
 
