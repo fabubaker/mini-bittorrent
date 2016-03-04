@@ -161,7 +161,10 @@ void process_inbound_udp(int sock) {
   /* Store all packet information in the struct below */
   parse_packet(find->buf, &packetinfo);
 
-  /* If there is data, parse it */
+  /* If there is data, parse it and create
+   * a linked list of packets to be sent to
+   * that peer.
+   */
   parse_data(&packetinfo, find);
 
   /* Weeee! */

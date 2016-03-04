@@ -182,6 +182,13 @@ void parse_packet(uint8_t *packet, packet_info* myPack){
  */
 void parse_data(packet_info* packetinfo, peer* p)
 {
+  ll* tmplist = create_ll(); // Free me later
+  chunk_table* find = NULL;
+  uint8_t n = packetinfo->numberHashes[0];
+
+  switch (packetinfo->packetType[0]) {
+
+  case 0:
   /*
     // IF WHOHAS
        extract chunk;
@@ -190,7 +197,21 @@ void parse_data(packet_info* packetinfo, peer* p)
        call gen_WHOIGET with IHAVE and pass in the linked list
        should return a linked list of packets to send
        use sendto to send the packets
+  */
+    for (uint8_t i = 0; i < n; i++)
+      {
+        HASH_FIND(hh, has_chunks, packetinfo->body + CHUNK * i, CHUNK, find);
 
+        if(find)
+          add_node(tmplist, packetinfo->body + CHUNK * i, CHUNK);
+      }
+
+    // gen_WHOIGET(, , tmplist, 1);
+    remove_ll(tmplist);
+    break;
+
+  case 1:
+    /*
     // IF IHAVE
        extract chunk;
        add chunk to the hash table 'p->has_chunks';
@@ -200,7 +221,19 @@ void parse_data(packet_info* packetinfo, peer* p)
        I'll send a GET to him later.
        I'll put in a timer to retransmit the GET after 5 seconds.
     }
+    */
+    for (uint8_t i = 0; i < n; i++)
+      {
+        find = calloc(1, sizeof(chunk_table));
+        memmove(find->chunk, packetinfo->body + CHUNK * i, CHUNK);
+        find->id = 0;
 
+        HASH_ADD(hh, p->has_chunks, chunk, CHUNK, find);
+      }
+
+    break;
+
+    /*
     // IF GET
        extract the chunk;
        check if we have it;
@@ -223,6 +256,7 @@ void parse_data(packet_info* packetinfo, peer* p)
      ???
 
   */
+  }
 }
 
 //Test later

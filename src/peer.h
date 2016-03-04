@@ -35,7 +35,7 @@ struct chunk_table {
   uint8_t        chunk[HASH_SIZE];  // Key
   size_t         id;
 
-  struct timeval start_time;
+  /* Fields below are to be only used for get_chunks */
 
   byte_buf       data;      // Store the data represented by the chunk here
   bool           requested; // Has this chunk been requested?
@@ -67,6 +67,7 @@ struct peer {
   int                LPAcked;
   int                LPSent;
   int                LPAvail;
+  struct timeval     start_time;
 
   UT_hash_handle     hh;
 
