@@ -9,6 +9,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <bool.h>
 
 #include "debug.h"
 #include "spiffy.h"
@@ -38,11 +39,11 @@ struct chunk_table {
   /* Fields below are to be only used for get_chunks */
 
   byte_buf       data;      // Store the data represented by the chunk here
-  bool           requested; // Has this chunk been requested?
+  bool           requested; // Has this chunk been 'GET'ed?
   bool           gotcha;    // Have we received this chunk (fully)?
 
   /* Format:     "address:port" */
-  char            whohas[PEER_KEY_LEN]; // The peer from which to 'GET'
+  char            whohas[PEER_KEY_LEN]; // The peer from who to 'GET'
 
   UT_hash_handle hh;
 

@@ -363,84 +363,83 @@ void parse_data(packet_info* packetinfo, peer* p)
   ll* tmplist = create_ll();
   chunk_table* find = NULL;
   uint8_t n = packetinfo->numberHashes[0];
-  uint8_t tempChunk[CHUNK];
-  bzero(tempChunk);
+  uint8_t tempChunk[CHUNK] = {0};
 
   switch (packetinfo->packetType[0]) {
 
-    case 0:
+  case 0:
     /*
-      // IF WHOHAS
-         extract chunk;
-         check if chunk exists in has_chunks
-         create linked list of request chunks that we have
-         call gen_WHOIGET with IHAVE and pass in the linked list
-         should return a linked list of packets to send
-         use sendto to send the packets
+    // IF WHOHAS
+    extract chunk;
+    check if chunk exists in has_chunks
+    create linked list of request chunks that we have
+    call gen_WHOIGET with IHAVE and pass in the linked list
+    should return a linked list of packets to send
+    use sendto to send the packets
     */
-      for (uint8_t i = 0; i < n; i++){
-        HASH_FIND(hh, has_chunks, packetinfo->body + CHUNK * i, CHUNK, find);
+    for (uint8_t i = 0; i < n; i++){
+      HASH_FIND(hh, has_chunks, packetinfo->body + CHUNK * i, CHUNK, find);
 
-        if(find) add_node(tmplist, packetinfo->body + CHUNK * i, CHUNK);
+      if(find) add_node(tmplist, packetinfo->body + CHUNK * i, CHUNK);
+    }
+
+    // gen_WHOIGET(, , tmplist, 1);
+    remove_ll(tmprlist);
+    break;
+
+  case 1:
+    /*
+    // IF IHAVE
+    extract chunk;
+    add chunk to the hash table 'p->has_chunks';
+    Lookup chunk in 'get_chunks';
+    if that chunk has not yet been requested, change the whohas field to
+    identify this peer.
+    I'll send a GET to him later.
+    I'll put in a timer to retransmit the GET after 5 seconds.
+    */
+    for (uint8_t i = 0; i < n; i++){
+      find = calloc(1, sizeof(chunk_table));
+      memmove(find->chunk, packetinfo->body + CHUNK * i, CHUNK);
+      find->id = 0;
+
+      HASH_ADD(hh, p->has_chunks, chunk, CHUNK, find);
+    }
+
+    break;
+
+  case 2:
+    for(uint8_t i = 0; i < n; i++){
+      HASH_FIND(hh, has_chunks, packetinfo->body + CHUNK * i, CHUNK, find);
+
+      if(find){
+        memcpy(tempChunk, packetinfo->body + CHUNK * i, CHUNK);
+        p->tosend = gen_DATA(tempChunk);
+        bzero(tempChunk, CHUNK);
+
+      } else { //Generate a denial message.
+
       }
+    }
 
-      // gen_WHOIGET(, , tmplist, 1);
-      remove_ll(tmprlist);
-      break;
+    break;
 
-    case 1:
-      /*
-      // IF IHAVE
-         extract chunk;
-         add chunk to the hash table 'p->has_chunks';
-         Lookup chunk in 'get_chunks';
-         if that chunk has not yet been requested, change the whohas field to
-         identify this peer.
-         I'll send a GET to him later.
-         I'll put in a timer to retransmit the GET after 5 seconds.
-      }
-      */
-      for (uint8_t i = 0; i < n; i++){
-        find = calloc(1, sizeof(chunk_table));
-        memmove(find->chunk, packetinfo->body + CHUNK * i, CHUNK);
-        find->id = 0;
-
-        HASH_ADD(hh, p->has_chunks, chunk, CHUNK, find);
-      }
-
-      break;
-
-    case 2:
-      for(uint8_t i = 0; i < n; i++){
-        HASH_FIND(hh, has_chunks, packetinfo->body + CHUNK * i, CHUNK, find);
-        
-        if(find){
-          memcpy(tempChunk, packetinfo->body + CHUNK * i, CHUNK);
-          ll *dataLL = gen_DATA(tempChunk);
-          bzero(tempChunk);
-          //Send that shit
-
-        } else { //Generate a denial message.
-
-        }
-      }
-
-      break;
-      /*
-      // IF DATA
-         Gonna have to do some flow control logic here;
-         extract the data and store it in a 512KB buffer.
-         How are we gonna know we recevied the entire chunk of data?
-         ANS: use a goddamn bytebuf. when pos = 512KB, we hit gold.
-         Perform a checksum afterwards, if badhash, send GET again,
-         else write the data into a file using fseek and all.
+  case 3:
+    /*
+    // IF DATA
+    Gonna have to do some flow control logic here;
+    extract the data and store it in a 512KB buffer.
+    How are we gonna know we recevied the entire chunk of data?
+    ANS: use a goddamn bytebuf. when pos = 512KB, we hit gold.
+    Perform a checksum afterwards, if badhash, send GET again,
+    else write the data into a file using fseek and all.
 
 
     //  IF ACK
-        Flow control logikz.
+    Flow control logikz.
 
     // IF DENIED
-       ???
+    ???
 
     */
   }

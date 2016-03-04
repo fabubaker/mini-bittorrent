@@ -168,7 +168,7 @@ void process_inbound_udp(int sock) {
   parse_data(&packetinfo, find);
 
   /* Weeee! */
-  sliding_send(find);
+  // sliding_send(find);
 
   /* Everytime a chunk has been fully received,
    * delete it from the hash table, but only
