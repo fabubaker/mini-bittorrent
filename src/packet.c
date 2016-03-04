@@ -141,15 +141,10 @@ void parse_packet(uint8_t *packet, packet_info* myPack){
     mmemmove(myPack->numberHashes, tempRequest,    1);
     mmemmove(myPack->padding, tempRequest,         3);
   }
-
-  char tempHex2[4];
-  bzero(tempHex2, 4);
-
+  char tempHex2[4] = {0};
   binary2hex(myPack->headerLength, 4, tempHex2);
   long int headerLength = strtol(tempHex2, NULL, 16);
-
   bzero(tempHex2, 4);
-
   binary2hex(myPack->totalPacketLength, 4, tempHex2);
   long int totalPacketLength = strtol(tempHex2, NULL, 16);
 
@@ -364,7 +359,7 @@ void parse_data(packet_info* packetinfo, peer* p)
   chunk_table* find = NULL;
   uint8_t n = packetinfo->numberHashes[0];
   uint8_t tempChunk[CHUNK];
-  bzero(tempChunk);
+  bzero(tempChunk, CHUNK);
 
   switch (packetinfo->packetType[0]) {
 
@@ -411,14 +406,20 @@ void parse_data(packet_info* packetinfo, peer* p)
       break;
 
     case 2:
+       /* IF GET
+       extract the chunk;
+       check if we have it;
+       If we don't, deny him. eheheh.
+       if we do, send it.
+       */
       for(uint8_t i = 0; i < n; i++){
         HASH_FIND(hh, has_chunks, packetinfo->body + CHUNK * i, CHUNK, find);
         
         if(find){
           memcpy(tempChunk, packetinfo->body + CHUNK * i, CHUNK);
           ll *dataLL = gen_DATA(tempChunk);
-          bzero(tempChunk);
-          //Send that shit
+          bzero(tempChunk, CHUNK);
+          //send_that_shit
 
         } else { //Generate a denial message.
 
@@ -434,8 +435,42 @@ void parse_data(packet_info* packetinfo, peer* p)
          ANS: use a goddamn bytebuf. when pos = 512KB, we hit gold.
          Perform a checksum afterwards, if badhash, send GET again,
          else write the data into a file using fseek and all.
+      */
 
+    case 3:
+      //If seq Number != Last Acked + 1, DUPACK
+      //Else, copy data into bytebuf
+      //Check, complete? If yes, gotcha = True
+      //  Perform checksum. If passes, good, else, send GET again
+      //Send ACK seqNumber, update Last acked.
+      char tempBuf[8] = {0};
 
+      binary2hex(packetinfo->sequenceNumber, 8, tempBuf);
+      long int seqNumber = strtol(tempBuf, NULL, 8);
+      bzero(tempBuf, 0);
+      binary2hex(packetinfo->headerLength, 4, tempBuf);
+      long int headerLength = strtol(tempBuf, NULL, 4);
+      bzero(tempBuf, 0);
+      binary2hex(packetinfo->totalPacketLength, 4, tempBuf);
+      long int totalPacketLength = strtol(tempBuf, NULL, 4);
+
+      if(seqNumber != p->LPAcked + 1){
+        //Gen Ack
+        //Send DUPACK
+      } else {
+        mmemcat(p->buf, packetinfo->body, totalPacketLength - headerLength);
+        if(p->buf->pos == CHUNK_SIZE){ //Complete Chunk!
+          //p->gotcha = True;
+          //HASH_ADD(hh, has_chunks, chunk, CHUNK, find);
+          //Check sum here, resend if necessary
+        }
+        //Send ACK
+        p->LPAcked++;
+      }
+
+      break;
+    
+    /*
     //  IF ACK
         Flow control logikz.
 
