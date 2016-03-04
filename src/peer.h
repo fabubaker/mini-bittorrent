@@ -49,6 +49,7 @@ struct chunk_table {
 
 };
 
+
 struct peer {
 
   int                id;
@@ -59,15 +60,17 @@ struct peer {
 
   chunk_table*       has_chunks;
   struct byte_buf*   buf;
-  ll*                tosend; // A linked list of packets to send to this peer
+  ll*                tosend;              // list of packets to send to this peer
   uint8_t            lastsent[HASH_SIZE]; // identifies the chunkhash of the last DATA pack
                                           // sent by this peer.
   /* Flow control/reliability state
      Note: use only for DATA packets
    */
-  int                LPAcked; //Last packet Acked
-  int                LPSent;  //Last packet sent
-  int                LPAvail; //Last packet available
+  unsigned int       LPAcked;     //Last packet Acked
+  unsigned int       LPSent;      //Last packet sent 
+  unsigned int       LPAvail;     //Last packet available (maximum packet able to send)
+  unsigned int       LPRecv;      //Last packet received
+  int                dupCounter;  //Checks if we have a DUP'd ACK
   struct timeval     start_time;
 
   UT_hash_handle     hh;

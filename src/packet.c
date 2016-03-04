@@ -454,9 +454,9 @@ void parse_data(packet_info* packetinfo, peer* p)
       binary2hex(packetinfo->totalPacketLength, 4, tempBuf);
       long int totalPacketLength = strtol(tempBuf, NULL, 4);
 
-      if(seqNumber != p->LPAcked + 1){
-        //Gen Ack
-        //Send DUPACK
+      if(seqNumber != p->LPRecv + 1){
+        //Gen Ack (ackNum is p->LPRecv)
+        //Send DUPACKs
       } else {
         mmemcat(p->buf, packetinfo->body, totalPacketLength - headerLength);
         if(p->buf->pos == CHUNK_SIZE){ //Complete Chunk!
@@ -465,19 +465,26 @@ void parse_data(packet_info* packetinfo, peer* p)
           //Check sum here, resend if necessary
         }
         //Send ACK
-        p->LPAcked++;
+        p->LPRecv++;
       }
 
       break;
-    
-    /*
-    //  IF ACK
-        Flow control logikz.
 
-    // IF DENIED
-       ???
+    case 4:
+      //First, check if this is a DUPACK (use p->LPAcked)
+      //If yes, increment dupack counter.
+      //  If counter == 3, send approp. packet. Set counter to 0.
+      //If not, delete packet from node and send next one.
+      //Increment p->LPAcked, p->LPAvail
+      //Sliding window stuff.
+      break;
 
-    */
+    case 5:
+
+      break;
+
+    default:
+      //WTF?
   }
 }
 
