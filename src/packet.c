@@ -151,8 +151,9 @@ void parse_packet(uint8_t *packet, packet_info* myPack){
   mmemmove(myPack->body, tempRequest, totalPacketLength - headerLength);
 }
 
-//Test later
-ll* gen_ACK(int ackNum){
+// Test later
+// Modify gen_ACK to generate duplicate ACKS
+ll* gen_ACK(int ackNum, int copies){
 
   byte_buf *tempRequest = create_bytebuf(PACKET_LENGTH);
   mmemclear(tempRequest);
@@ -195,7 +196,7 @@ ll* gen_ACK(int ackNum){
  *      1. Requests: Array of uint8_ts. Must have space for at least 512 spots.
  *      2. chunkHash: The required chunk to send.
  */
-ll* gen_DATA(uint8_t *chunkHash){
+ll* gen_DATA(uint8_t *chunkHash) {
 
   byte_buf *tempRequest = create_bytebuf(PACKET_LENGTH);
   mmemclear(tempRequest);
@@ -379,8 +380,8 @@ void parse_data(packet_info* packetinfo, peer* p)
         if(find) add_node(tmplist, packetinfo->body + CHUNK * i, CHUNK);
       }
 
-      // gen_WHOIGET(, , tmplist, 1);
-      remove_ll(tmprlist);
+      gen_WHOIGET(tmplist, 1);
+      remove_ll(tmplist);
       break;
 
     case 1:
@@ -412,19 +413,20 @@ void parse_data(packet_info* packetinfo, peer* p)
        If we don't, deny him. eheheh.
        if we do, send it.
        */
-      for(uint8_t i = 0; i < n; i++){
+      for(uint8_t i = 0; i < n; i++) {
         HASH_FIND(hh, has_chunks, packetinfo->body + CHUNK * i, CHUNK, find);
-        
-        if(find){
+
+        if(find) {
           memcpy(tempChunk, packetinfo->body + CHUNK * i, CHUNK);
-          ll *dataLL = gen_DATA(tempChunk);
+          p->tosend = gen_DATA(tempChunk);
           bzero(tempChunk, CHUNK);
-          //send_that_shit
 
-        } else { //Generate a denial message.
-
+        } else {
+          //Generate a denial message.
         }
       }
+
+
 
       break;
       /*
@@ -446,22 +448,27 @@ void parse_data(packet_info* packetinfo, peer* p)
       char tempBuf[8] = {0};
 
       binary2hex(packetinfo->sequenceNumber, 8, tempBuf);
-      long int seqNumber = strtol(tempBuf, NULL, 8);
+      long int seqNumber = strtol(tempBuf, NULL, 16); // Drop the base
       bzero(tempBuf, 0);
       binary2hex(packetinfo->headerLength, 4, tempBuf);
-      long int headerLength = strtol(tempBuf, NULL, 4);
+      long int headerLength = strtol(tempBuf, NULL, 16);
       bzero(tempBuf, 0);
       binary2hex(packetinfo->totalPacketLength, 4, tempBuf);
-      long int totalPacketLength = strtol(tempBuf, NULL, 4);
+      long int totalPacketLength = strtol(tempBuf, NULL, 16);
 
       if(seqNumber != p->LPRecv + 1){
-        //Gen Ack (ackNum is p->LPRecv)
-        //Send DUPACKs
+        p->tosend = gen_ACK(p->LPRecv, 2);
+
       } else {
-        mmemcat(p->buf, packetinfo->body, totalPacketLength - headerLength);
-        if(p->buf->pos == CHUNK_SIZE){ //Complete Chunk!
-          //p->gotcha = True;
-          //HASH_ADD(hh, has_chunks, chunk, CHUNK, find);
+        HASH_FIND(hh, get_chunks, p->chunk, HASH_SIZE, find);
+
+        // if(find == NULL)
+          // Badstuff
+
+        mmemcat(find->data, packetinfo->body, totalPacketLength - headerLength);
+        if(find->pos == CHUNK_SIZE) { //Complete Chunk!
+          find->gotcha = True;
+          HASH_ADD(hh, has_chunks, chunk, CHUNK, find);
           //Check sum here, resend if necessary
         }
         //Send ACK
@@ -477,9 +484,31 @@ void parse_data(packet_info* packetinfo, peer* p)
       //If not, delete packet from node and send next one.
       //Increment p->LPAcked, p->LPAvail
       //Sliding window stuff.
+      int delno;
+
+      if(p->LPAcked == packetinfo->ackNum)
+        {
+          p->dupCounter++;
+
+          if(p->dupCounter == 3)
+            {
+              // Resend the lost packets
+            }
+        }
+      else
+        {
+          delno = packetinfo->ackNumber - p->LPAcked;
+
+          for (int i = 0; i < delno; i++)
+            {
+              delete_node(p->tosend);
+            }
+        }
+
       break;
 
     case 5:
+      // Leave this for now...
 
       break;
 

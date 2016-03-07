@@ -38,7 +38,7 @@ struct chunk_table {
 
   /* Fields below are to be only used for get_chunks */
 
-  byte_buf       data;      // Store the data represented by the chunk here
+  struct byte_buf*       data;      // Store the data represented by the chunk here
   bool           requested; // Has this chunk been 'GET'ed?
   bool           gotcha;    // Have we received this chunk (fully)?
 
@@ -59,15 +59,15 @@ struct peer {
   struct sockaddr_in addr;
 
   chunk_table*       has_chunks;
-  struct byte_buf*   buf;
+  //struct byte_buf*   buf;
   ll*                tosend;              // list of packets to send to this peer
-  uint8_t            lastsent[HASH_SIZE]; // identifies the chunkhash of the last DATA pack
+  uint8_t            chunk[HASH_SIZE]; // identifies the chunk being obtained from this peer
                                           // sent by this peer.
   /* Flow control/reliability state
      Note: use only for DATA packets
    */
   unsigned int       LPAcked;     //Last packet Acked
-  unsigned int       LPSent;      //Last packet sent 
+  unsigned int       LPSent;      //Last packet sent
   unsigned int       LPAvail;     //Last packet available (maximum packet able to send)
   unsigned int       LPRecv;      //Last packet received
   int                dupCounter;  //Checks if we have a DUP'd ACK
