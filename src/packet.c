@@ -132,11 +132,11 @@ void parse_packet(uint8_t *packet, packet_info* myPack){
     }
   */
 
-  mmemmove(myPack->packetType, tempRequest,        1);
-  mmemmove(myPack->headerLength, tempRequest,      2);
-  mmemmove(myPack->totalPacketLength, tempRequest, 2);
-  mmemmove(myPack->sequenceNumber, tempRequest,    4);
-  mmemmove(myPack->ackNumber, tempRequest,         4);
+  mmemmove(myPack->packetType,         tempRequest, 1);
+  mmemmove(myPack->headerLength,       tempRequest, 2);
+  mmemmove(myPack->totalPacketLength,  tempRequest, 2);
+  mmemmove(myPack->sequenceNumber,     tempRequest, 4);
+  mmemmove(myPack->ackNumber,          tempRequest, 4);
 
   int packetType = binary2int(myPack->packetType, 1);
 
@@ -439,8 +439,6 @@ void parse_data(packet_info* packetinfo, peer* p)
         }
       }
 
-
-
       break;
       /*
       // IF DATA
@@ -492,7 +490,7 @@ void parse_data(packet_info* packetinfo, peer* p)
       //Increment p->LPAcked, p->LPAvail
       //Sliding window stuff.
 
-      if(p->LPAcked == (unsigned int)binary2int(packetinfo->ackNumber, 4))
+      if(p->LPAcked == (unsigned int) binary2int(packetinfo->ackNumber, 4))
         {
           p->dupCounter++;
 
@@ -503,7 +501,7 @@ void parse_data(packet_info* packetinfo, peer* p)
         }
       else
         {
-          delno = (unsigned int)binary2int(packetinfo->ackNumber, 4) - p->LPAcked;
+          delno = (unsigned int) binary2int(packetinfo->ackNumber, 4) - p->LPAcked;
 
           for (int i = 0; i < delno; i++)
             {

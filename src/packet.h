@@ -60,6 +60,7 @@ struct packet_info {
 
 typedef struct byte_buf byte_buf;
 typedef struct packet_info packet_info;
+typedef struct peer        peer;
 
 void mmemmove(uint8_t *binaryNumber, byte_buf *tempRequest, int size);
 void mmemcat(byte_buf *tempRequest, uint8_t *binaryNumber, int size);
@@ -70,7 +71,7 @@ void dec2hex2binary(int decimalNumber, int bytesNeeded, uint8_t* binaryNumber);
 ll* gen_WHOIGET(ll *list, int packetCode);
 ll* gen_DATA(uint8_t *chunkHash);
 void parse_packet(uint8_t *packet, packet_info* myPack);
-
+void parse_data(packet_info* packetinfo, peer* p);
 
 struct byte_buf*  create_bytebuf(size_t bufsize);
 void              delete_bytebuf(struct byte_buf* buf);

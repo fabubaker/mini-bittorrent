@@ -134,8 +134,8 @@ void process_inbound_udp(int sock) {
   recvfrom(sock, buf, BUFLEN, 0, (struct sockaddr *) &from, &fromlen);
 
   sprintf(keybuf, "%s:%d",
-          inet_ntoa(from->addr.sin_addr),
-          ntohs(from->addr.sin_port));
+          inet_ntoa(from.sin_addr),
+          ntohs(from.sin_port));
 
   HASH_FIND_STR( peer_list, keybuf, find );
 
@@ -156,10 +156,10 @@ void process_inbound_udp(int sock) {
          buf);
 
   packet_info packetinfo;
-  bzero(packetinfo, sizeof(packetinfo));
+  bzero(&packetinfo, sizeof(packetinfo));
 
   /* Store all packet information in the struct below */
-  parse_packet(find->buf, &packetinfo);
+  parse_packet(find->buf->buf, &packetinfo);
 
   /* If there is data, parse it and create
    * a linked list of packets to be sent to
@@ -307,8 +307,8 @@ void make_chunktable(char* chunk_file, chunk_table** table, int flag)
       else
         tmptable->data = NULL;
 
-      tmptable->requested = false;
-      tmptable->gotcha =  false;
+      tmptable->requested = 0;
+      tmptable->gotcha =  0;
 
       bzero(tmptable->whohas, PEER_KEY_LEN);
 

@@ -34,6 +34,6 @@ ll*   create_ll();
 void  remove_ll(ll* list);
 
 void  add_node(ll* list, uint8_t* data, size_t n);
-//void  remove_node(ll* list, char* data);
+void delete_node(ll* list);
 
 /* End Linked list */

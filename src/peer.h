@@ -38,8 +38,8 @@ struct chunk_table {
   /* Fields below are to be only used for get_chunks */
 
   struct byte_buf*       data;      // Store the data represented by the chunk here
-  bool           requested; // Has this chunk been 'GET'ed?
-  bool           gotcha;    // Have we received this chunk (fully)?
+  int                    requested; // Has this chunk been 'GET'ed?
+  int                    gotcha;    // Have we received this chunk (fully)?
 
   /* Format:     "address:port" */
   char            whohas[PEER_KEY_LEN]; // The peer from who to 'GET'
@@ -58,7 +58,7 @@ struct peer {
   struct sockaddr_in addr;
 
   chunk_table*       has_chunks;
-  //struct byte_buf*   buf;
+  struct byte_buf*   buf;
   ll*                tosend;              // list of packets to send to this peer
   uint8_t            chunk[HASH_SIZE]; // identifies the chunk being obtained from this peer
                                           // sent by this peer.
