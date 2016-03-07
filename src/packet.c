@@ -461,7 +461,7 @@ void parse_data(packet_info* packetinfo, peer* p)
       headerLength = binary2int(packetinfo->headerLength, 2);
       totalPacketLength = binary2int(packetinfo->totalPacketLength, 2);
 
-      if(seqNumber != p->LPRecv + 1){
+      if((unsigned int)seqNumber != p->LPRecv + 1){
         p->tosend = gen_ACK(p->LPRecv, 2);
 
       } else {
@@ -516,8 +516,10 @@ void parse_data(packet_info* packetinfo, peer* p)
 
       break;
 
+    /*
     default:
       //WTF?
+    */
   }
 }
 
