@@ -9,7 +9,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <bool.h>
 
 #include "debug.h"
 #include "spiffy.h"

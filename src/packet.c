@@ -59,6 +59,14 @@ void mmemclear(byte_buf *b)
   bzero(b->buf, b->bufsize);
 }
 
+int binary2int(uint8_t *buf, int len){
+  char temp[2*len];
+  bzero(temp, 2*len);
+  binary2hex(buf, len, temp);
+  int ret = (int)strtol(temp, NULL, 16);
+  return ret;
+}
+
 /* First converts decimalNumber from decimal to hex. Next, it passes the
  * result to the given hex2binary function.
  * Arguments:
@@ -130,29 +138,21 @@ void parse_packet(uint8_t *packet, packet_info* myPack){
   mmemmove(myPack->sequenceNumber, tempRequest,    4);
   mmemmove(myPack->ackNumber, tempRequest,         4);
 
-  char tempHex[2];
-  bzero(tempHex, 2);
-  binary2hex(myPack->packetType, 2, tempHex);
+  int packetType = binary2int(myPack->packetType, 1);
 
-  if( strcmp(tempHex, "00") == 0 ||
-      strcmp(tempHex, "01") == 0 ||
-      strcmp(tempHex, "02") == 0){
+  if(packetType == 0 || packetType == 1 || packetType == 2){
 
     mmemmove(myPack->numberHashes, tempRequest,    1);
     mmemmove(myPack->padding, tempRequest,         3);
   }
-  char tempHex2[4] = {0};
-  binary2hex(myPack->headerLength, 4, tempHex2);
-  long int headerLength = strtol(tempHex2, NULL, 16);
-  bzero(tempHex2, 4);
-  binary2hex(myPack->totalPacketLength, 4, tempHex2);
-  long int totalPacketLength = strtol(tempHex2, NULL, 16);
+
+  int headerLength = binary2int(myPack->headerLength, 2);
+  int totalPacketLength = binary2int(myPack->totalPacketLength, 2);
 
   mmemmove(myPack->body, tempRequest, totalPacketLength - headerLength);
 }
 
-// Test later
-// Modify gen_ACK to generate duplicate ACKS
+//Test later
 ll* gen_ACK(int ackNum, int copies){
 
   byte_buf *tempRequest = create_bytebuf(PACKET_LENGTH);
@@ -186,7 +186,10 @@ ll* gen_ACK(int ackNum, int copies){
   mmemcat(tempRequest, sequenceNumber,    4);
   mmemcat(tempRequest, ackNumber,         4);
 
-  add_node(myLL, tempRequest->buf, HEADER + DATA_LENGTH);
+  while(copies){
+    add_node(myLL, tempRequest->buf, HEADER + DATA_LENGTH);
+    copies--;
+  }
   return myLL;
 }
 
@@ -230,10 +233,6 @@ ll* gen_DATA(uint8_t *chunkHash) {
   int packCounter = 0;
   int bufPos = 0;
   int seqNumber = 1;
-
-  for(int i = 0; i < numPacket; i++){
-    Requests[i] = malloc(PACKET_LENGTH);
-  }
 
   uint8_t magicNumber[2];
   uint8_t versionNumber[1] = {VERSION_NUMBER};
@@ -361,6 +360,10 @@ void parse_data(packet_info* packetinfo, peer* p)
   uint8_t n = packetinfo->numberHashes[0];
   uint8_t tempChunk[CHUNK];
   bzero(tempChunk, CHUNK);
+  int seqNumber;
+  int headerLength;
+  int totalPacketLength;
+  int delno;
 
   switch (packetinfo->packetType[0]) {
 
@@ -399,7 +402,17 @@ void parse_data(packet_info* packetinfo, peer* p)
       for (uint8_t i = 0; i < n; i++){
         find = calloc(1, sizeof(chunk_table));
         memmove(find->chunk, packetinfo->body + CHUNK * i, CHUNK);
-        find->id = 0;
+        find->id = 0;      break;
+      /*
+      // IF DATA
+         Gonna have to do some flow control logic here;
+         extract the data and store it in a 512KB buffer.
+         How are we gonna know we recevied the entire chunk of data?
+         ANS: use a goddamn bytebuf. when pos = 512KB, we hit gold.
+         Perform a checksum afterwards, if badhash, send GET again,
+         else write the data into a file using fseek and all.
+      */
+
 
         HASH_ADD(hh, p->has_chunks, chunk, CHUNK, find);
       }
@@ -445,16 +458,10 @@ void parse_data(packet_info* packetinfo, peer* p)
       //Check, complete? If yes, gotcha = True
       //  Perform checksum. If passes, good, else, send GET again
       //Send ACK seqNumber, update Last acked.
-      char tempBuf[8] = {0};
 
-      binary2hex(packetinfo->sequenceNumber, 8, tempBuf);
-      long int seqNumber = strtol(tempBuf, NULL, 16); // Drop the base
-      bzero(tempBuf, 0);
-      binary2hex(packetinfo->headerLength, 4, tempBuf);
-      long int headerLength = strtol(tempBuf, NULL, 16);
-      bzero(tempBuf, 0);
-      binary2hex(packetinfo->totalPacketLength, 4, tempBuf);
-      long int totalPacketLength = strtol(tempBuf, NULL, 16);
+      seqNumber = binary2int(packetinfo->sequenceNumber, 4);
+      headerLength = binary2int(packetinfo->headerLength, 2);
+      totalPacketLength = binary2int(packetinfo->totalPacketLength, 2);
 
       if(seqNumber != p->LPRecv + 1){
         p->tosend = gen_ACK(p->LPRecv, 2);
@@ -466,8 +473,8 @@ void parse_data(packet_info* packetinfo, peer* p)
           // Badstuff
 
         mmemcat(find->data, packetinfo->body, totalPacketLength - headerLength);
-        if(find->pos == CHUNK_SIZE) { //Complete Chunk!
-          find->gotcha = True;
+        if(find->data->pos == CHUNK_SIZE) { //Complete Chunk!
+          find->gotcha = 1;
           HASH_ADD(hh, has_chunks, chunk, CHUNK, find);
           //Check sum here, resend if necessary
         }
@@ -484,9 +491,8 @@ void parse_data(packet_info* packetinfo, peer* p)
       //If not, delete packet from node and send next one.
       //Increment p->LPAcked, p->LPAvail
       //Sliding window stuff.
-      int delno;
 
-      if(p->LPAcked == packetinfo->ackNum)
+      if(p->LPAcked == (unsigned int)binary2int(packetinfo->ackNumber, 4))
         {
           p->dupCounter++;
 
@@ -497,7 +503,7 @@ void parse_data(packet_info* packetinfo, peer* p)
         }
       else
         {
-          delno = packetinfo->ackNumber - p->LPAcked;
+          delno = (unsigned int)binary2int(packetinfo->ackNumber, 4) - p->LPAcked;
 
           for (int i = 0; i < delno; i++)
             {
