@@ -7,13 +7,6 @@
 /********************************************************/
 
 /*
- * TODO: I've changed add_node to take in an 'int type'. We can use
- * it to differentiate between sliding window packets and non sliding window
- * packs. Change your add_node calls.
- *
- * TODO: I've made an append function for linked lists. Use it to append
- * p->tosend and gen_* linked lists.
- *
  * TODO: We need to retransmit a GET if the peer hasn't responded to us.
  * Maybe use the peer->busy field? Set it only if we get the first DATA
  * packet from that peer?
@@ -25,6 +18,7 @@
 #include "packet.h"
 
 /* Globals */
+//All of the below appear in peer.c
 
 extern  peer*        peer_list;      // Provided in argv
 
@@ -37,8 +31,11 @@ extern size_t       max_conn;          // Provided in argv
 extern char*        master_data_file;  // Provided in master_chunks file
 extern char*        output_file;       // Provided in STDIN
 
-/* Definitions */
-
+/* Creates a bytebuf struct. The bytebuf's buffer has bufsize bytes allocated.
+ * Note that the bytebuf must be freed outside the function.
+ * Arguments:
+ *      1. bufsize: Length of the buf argument.
+ */
 struct byte_buf* create_bytebuf(size_t bufsize)
 {
   struct byte_buf *b;
@@ -59,22 +56,42 @@ struct byte_buf* create_bytebuf(size_t bufsize)
   return b;
 }
 
+/* Moves <size> bytes, starting from <tempRequest>'s pos argument, into 
+ * the argument binaryNumber.
+ * Arguments:
+ *      1. binaryNumber: Destination buffer. Must be at least <size> bytes.
+ *      2. tempRequest: Source. Copying from tempRequest->buf
+ *      3. size: Number of bytes to copy.
+ */
 void mmemmove(uint8_t *binaryNumber, byte_buf *tempRequest, int size){
   memmove(binaryNumber, tempRequest->buf + tempRequest->pos, size);
   tempRequest->pos += size;
 }
 
+/* Concatenates the contents of <binaryNumber> to <tempRequest>'s buf
+ * argument.
+ * Arguments:
+ *      1. tempRequest: tempRequest->buf is the destination buffer.
+ *      2. binaryNumber: Source buffer.
+ *      3. size: Number of bytes to copy from binaryNumber.
+ */ 
 void mmemcat(byte_buf *tempRequest, uint8_t *binaryNumber, int size){
   memmove(tempRequest->buf + tempRequest->pos, binaryNumber, size);
   tempRequest->pos += size;
 }
 
+/* Sets a byte_buf's contents to its default values. */
 void mmemclear(byte_buf *b)
 {
   b->pos = 0;
   bzero(b->buf, b->bufsize);
 }
 
+/* Converts a given binary number to an int.
+ * Arguments: 
+ *      1. binaryNumber: Number to convert.
+ *      2. len: Length of the buffer.
+ */
 int binary2int(uint8_t *buf, int len){
   char temp[2*len];
   bzero(temp, 2*len);
@@ -203,7 +220,7 @@ ll* gen_ACK(int ackNum, int copies){
   mmemcat(tempRequest, ackNumber,         4);
 
   while(copies){
-    add_node(myLL, tempRequest->buf, HEADER + DATA_LENGTH);
+    add_node(myLL, tempRequest->buf, HEADER + DATA_LENGTH, 0);
     copies--;
   }
   return myLL;
@@ -282,7 +299,7 @@ ll* gen_DATA(uint8_t *chunkHash) {
     mmemcat(tempRequest, ackNumber,         4);
     mmemcat(tempRequest, tempBuf, DATA_LENGTH);
 
-    add_node(myLL, tempRequest->buf, HEADER + DATA_LENGTH);
+    add_node(myLL, tempRequest->buf, HEADER + DATA_LENGTH, 1);
     packCounter++;
     bufPos += DATA_LENGTH;
   }
@@ -362,7 +379,7 @@ ll* gen_WHOIGET(ll *list, int packetCode){
       temp = temp->next;
     }
 
-    add_node(myLL, tempRequest->buf, HEADER + CHUNK * tempNumHashes + 4);
+    add_node(myLL, tempRequest->buf, HEADER + CHUNK * tempNumHashes + 4, 0);
     packCounter++;
     numHashes -= MAX_NUM_HASH;
   }
@@ -396,7 +413,7 @@ void parse_data(packet_info* packetinfo, peer* p)
       for (uint8_t i = 0; i < n; i++){
         HASH_FIND(hh, has_chunks, packetinfo->body + CHUNK * i, CHUNK, find);
 
-        if(find) add_node(tmplist, packetinfo->body + CHUNK * i, CHUNK);
+        if(find) add_node(tmplist, packetinfo->body + CHUNK * i, CHUNK, 0);
       }
 
       p->tosend = append(gen_WHOIGET(tmplist, 1), p->tosend);
