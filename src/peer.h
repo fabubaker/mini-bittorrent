@@ -60,7 +60,8 @@ struct peer {
   chunk_table*       has_chunks;
   struct byte_buf*   buf;
   ll*                tosend;              // list of packets to send to this peer
-  uint8_t            chunk[HASH_SIZE]; // identifies the chunk being obtained from this peer
+  int                busy;                // Are we requesting DATA from this peer?
+  uint8_t            chunk[HASH_SIZE];    // identifies the chunk being obtained from this peer
                                           // sent by this peer.
   /* Flow control/reliability state
      Note: use only for DATA packets
@@ -87,5 +88,6 @@ void handle_user_input(char *line, void *cbdata);
 void global_populate(bt_config_t* config);
 void convert_LL2HT(bt_peer_t* ll_peers, peer** ht_peers);
 void make_chunktable(char* chunk_file, chunk_table** table, int flag);
+void choose_peer();
 
 #endif

@@ -6,6 +6,17 @@
 /* @author Malek Anabtawi, Fadhil Abubaker              */
 /********************************************************/
 
+/*
+ * TODO: I've changed add_node to take in an 'int type'. We can use
+ * it to differentiate between sliding window packets and non sliding window
+ * packs. Change your add_node calls.
+ *
+ * TODO: I've made an append function for linked lists. Use it to append
+ * p->tosend and gen_* linked lists.
+ *
+ */
+
+
 #include "packet.h"
 
 /* Globals */
@@ -383,7 +394,7 @@ void parse_data(packet_info* packetinfo, peer* p)
         if(find) add_node(tmplist, packetinfo->body + CHUNK * i, CHUNK);
       }
 
-      gen_WHOIGET(tmplist, 1);
+      p->tosend = append(gen_WHOIGET(tmplist, 1), p->tosend);
       remove_ll(tmplist);
       break;
 
@@ -399,21 +410,10 @@ void parse_data(packet_info* packetinfo, peer* p)
          I'll put in a timer to retransmit the GET after 5 seconds.
       }
       */
-      for (uint8_t i = 0; i < n; i++){
+      for (uint8_t i = 0; i < n; i++) {
         find = calloc(1, sizeof(chunk_table));
         memmove(find->chunk, packetinfo->body + CHUNK * i, CHUNK);
-        find->id = 0;      break;
-      /*
-      // IF DATA
-         Gonna have to do some flow control logic here;
-         extract the data and store it in a 512KB buffer.
-         How are we gonna know we recevied the entire chunk of data?
-         ANS: use a goddamn bytebuf. when pos = 512KB, we hit gold.
-         Perform a checksum afterwards, if badhash, send GET again,
-         else write the data into a file using fseek and all.
-      */
-
-
+        find->id = 0;
         HASH_ADD(hh, p->has_chunks, chunk, CHUNK, find);
       }
 
@@ -431,7 +431,7 @@ void parse_data(packet_info* packetinfo, peer* p)
 
         if(find) {
           memcpy(tempChunk, packetinfo->body + CHUNK * i, CHUNK);
-          p->tosend = gen_DATA(tempChunk);
+          p->tosend = append(p->tosend, gen_DATA(tempChunk));
           bzero(tempChunk, CHUNK);
 
         } else {
@@ -473,6 +473,7 @@ void parse_data(packet_info* packetinfo, peer* p)
         mmemcat(find->data, packetinfo->body, totalPacketLength - headerLength);
         if(find->data->pos == CHUNK_SIZE) { //Complete Chunk!
           find->gotcha = 1;
+          p->busy = 0;
           HASH_ADD(hh, has_chunks, chunk, CHUNK, find);
           //Check sum here, resend if necessary
         }

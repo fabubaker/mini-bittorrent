@@ -93,6 +93,7 @@ void peer_run(bt_config_t *config) {
 
   while (1) {
     int nfds;
+    peer* p; peer* tmp;
 
     FD_SET(STDIN_FILENO, &readfds);
     FD_SET(sock, &readfds);
@@ -112,7 +113,18 @@ void peer_run(bt_config_t *config) {
         }
     }
 
+    /* Decide which peer to get which chunk from */
+    choose_peer();
+
+    /* Loop through all peers and send packets to them using
+     * a sliding window protocol. */
+    HASH_ITER(hh, peer_list, p, tmp) {
+      sliding_send(p);
+    }
+
     /* Insert code here to update 'tv' */
+    tv.tv_sec = 10;
+    tv.tv_usec = 500000; // 10.5 seconds in the beginning
   }
 }
 
@@ -167,9 +179,6 @@ void process_inbound_udp(int sock) {
    */
   parse_data(&packetinfo, find);
 
-  /* Weeee! */
-  // sliding_send(find);
-
   /* Everytime a chunk has been fully received,
    * delete it from the hash table, but only
    * after writing its data to the file.
@@ -179,6 +188,9 @@ void process_inbound_udp(int sock) {
 }
 
 void process_get(char *chunkfile, char *outputfile) {
+  peer* find; chunk_table* find2;
+  peer* tmp;  ll* llget = create_ll();
+
   if (!get_chunks)
     return;
 
@@ -186,6 +198,18 @@ void process_get(char *chunkfile, char *outputfile) {
   strcpy(output_file, outputfile);
 
   make_chunktable(chunkfile, &get_chunks, 2);
+
+  /* Iterate through all the chunks to get and create a linked list */
+  HASH_ITER(hh, get_chunks, find2, tmp) {
+    add_node(llget, find2->chunk, HASH_SIZE, 0);
+  }
+
+  /* Iterate through all peers and generate WHOHAS for each of them */
+  HASH_ITER(hh, peer_list, find, tmp) {
+    find->tosend = append(gen_WHOIGET(llget, 0), find->tosend);
+  }
+
+  remove_ll(llget);
 }
 
 void handle_user_input(char *line, void *cbdata) {
@@ -258,10 +282,15 @@ void convert_LL2HT(bt_peer_t* ll_peers, peer** ht_peers)
       tmppeer->has_chunks = NULL;
       tmppeer->buf        = create_bytebuf(PACKET_LENGTH);
       tmppeer->tosend     = NULL;
+      tmppeer->busy       = 0;
+      bzero(tmppeer->chunk, HASH_SIZE);
 
       tmppeer->LPAcked    = 0;
       tmppeer->LPSent     = 0;
       tmppeer->LPAvail    = 8;
+      tmppeer->LPRecv     = 0;
+
+      tmppeer->dupCounter = 0;
 
       HASH_ADD_STR( *ht_peers, key, tmppeer );
     }
@@ -330,6 +359,51 @@ void sliding_send(packet_info* packetinfo, peer* p)
 
 }
 
+
+void choose_peer()
+{
+  peer* p; peer* tmp;
+  chunk_table* find; chunk_table* tmp2;
+  chunk_table* find2;
+  ll* llget = create_ll();
+
+  /* If the user hasn't requested anything, exit immediately */
+  if (!get_chunks)
+    return;
+
+  /* Iterate through each peer to decide which chunk to get */
+  HASH_ITER(hh, peer_list, p, tmp) {
+
+    if(!p->has_chunks) /* No IHAVE from this peer, continue  */
+      continue;
+
+    if(p->busy) /* Leave him alone */
+      continue;
+
+    /* Iterate through each peer's chunks */
+    HASH_ITER(hh, p->has_chunks, find, tmp2) {
+
+      HASH_FIND(hh, get_chunks, find->chunk, HASH_SIZE, find2);
+
+      if(!find2->requested)
+        {
+          find2->requested = 1;
+
+          add_node(llget, find2->chunk, HASH_SIZE, 0);
+          p->tosend = append(gen_WHOIGET(llget, 2), p->tosend);
+
+          p->busy = 1;
+
+          bzero(p->chunk, HASH_SIZE);
+          memcpy(p->chunk, find2->chunk, HASH_SIZE);
+
+          delete_node(llget);
+
+          break;
+        }
+    }
+  }
+}
 
 /*
   Notes:

@@ -39,7 +39,7 @@ void remove_ll(ll* list)
   free(list);
 }
 
-void add_node(ll* list, uint8_t* data, size_t n)
+void add_node(ll* list, uint8_t* data, size_t n, int type)
 {
   node* prev;
 
@@ -66,12 +66,15 @@ void add_node(ll* list, uint8_t* data, size_t n)
     }
 
   memmove(list->last->data, data, n);
+  list->last->type = type;
   list->count++;
 }
 
-/**********************************************************/
-/* @brief Deletes a node from the head of the linked list */
-/**********************************************************/
+
+/***********************************************************/
+/* @brief Deletes a node from the head of the linked list. */
+/* @param list - The list to delete the node from.         */
+/***********************************************************/
 void delete_node(ll* list)
 {
   node* killme;
@@ -86,8 +89,35 @@ void delete_node(ll* list)
 
   killme      = list->first;
   list->first = list->first->next;
+
+  if(list->count == 1)
+    list->last = NULL;
+
   list->count--;
   free(killme);
+}
+
+
+/*********************************************************************/
+/* @brief Appends two linked lists. Can even append two linked lists */
+/*        with different data                                        */
+/* @param list1 - The prefix list.                                   */
+/* @param list2 - The suffix list.                                   */
+/*********************************************************************/
+ll* append(ll* list1, ll* list2)
+{
+  if(!list1)
+    return list2;
+
+  if(!list2)
+    return list1;
+
+  list1->last->next = list2->first;
+  list1->last = list2->last;
+  list1->count += list2->count;
+  free(list2);
+
+  return list1;
 }
 
 /* #ifdef TESTING */
