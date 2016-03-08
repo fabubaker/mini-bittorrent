@@ -71,7 +71,7 @@ struct peer {
   unsigned int       LPAvail;     //Last packet available (maximum packet able to send)
   unsigned int       LPRecv;      //Last packet received
   int                dupCounter;  //Checks if we have a DUP'd ACK
-  struct timeval     start_time;
+  struct timespec    start_time;
 
   UT_hash_handle     hh;
 
