@@ -356,6 +356,7 @@ void make_chunktable(char* chunk_file, chunk_table** table, int flag)
 void sliding_send(peer* p, int sock)
 {
   node* cur;
+  unsigned int no = p->LPAvail - p->LPSent;
 
   if(!p->tosend)
     return;
@@ -366,7 +367,13 @@ void sliding_send(peer* p, int sock)
     {
       if(cur->type) // DATA/ACK packet
         {
+          for(unsigned int i = 0; i < no ; i++)
+            {
+              sendto(sock, cur->data, DATA_SIZE, 0,
+                     (struct sockaddr*)(&p->addr), sizeof(p-addr));
 
+              p->LPSent++;
+            }
         }
       else          // Any other packet
         {

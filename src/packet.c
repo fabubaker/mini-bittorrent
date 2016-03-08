@@ -22,7 +22,6 @@
  *
  */
 
-
 #include "packet.h"
 
 /* Globals */
@@ -377,7 +376,7 @@ void parse_data(packet_info* packetinfo, peer* p)
   uint8_t n = packetinfo->numberHashes[0];
   uint8_t tempChunk[CHUNK];
   bzero(tempChunk, CHUNK);
-  int seqNumber;
+  unsigned int seqNumber; unsigned int ackNumber;
   int headerLength;
   int totalPacketLength;
   int delno;
@@ -463,14 +462,22 @@ void parse_data(packet_info* packetinfo, peer* p)
       //  Perform checksum. If passes, good, else, send GET again
       //Send ACK seqNumber, update Last acked.
 
-      seqNumber = binary2int(packetinfo->sequenceNumber, 4);
+      seqNumber = (unsigned int) binary2int(packetinfo->sequenceNumber, 4);
       headerLength = binary2int(packetinfo->headerLength, 2);
       totalPacketLength = binary2int(packetinfo->totalPacketLength, 2);
 
-      if((unsigned int)seqNumber != p->LPRecv + 1){
-        p->tosend = gen_ACK(p->LPRecv, 2);
+      /* Check if we received a packet we got before */
+      if (seqNumber <= p->LPRecv) {
+        p->tosend = append(gen_ACK(p->LPRecv, 1), p->tosend);
+        break;
+      }
 
-      } else {
+      /* Check if we received an inorder packet  */
+      if(seqNumber > p->LPRecv + 1) {
+        p->tosend = append(gen_ACK(p->LPRecv, 3), p->tosend);
+        break;
+      }
+      else {
         HASH_FIND(hh, get_chunks, p->chunk, HASH_SIZE, find);
 
         // if(find == NULL)
@@ -484,7 +491,8 @@ void parse_data(packet_info* packetinfo, peer* p)
           //Check sum here, resend if necessary
         }
         //Send ACK
-        p->LPRecv++;
+        p->LPRecv = seqNumber;
+        p->tosend = append(gen_ACK(p->tosend, 1), p->tosend);
       }
 
       break;
@@ -496,8 +504,9 @@ void parse_data(packet_info* packetinfo, peer* p)
       //If not, delete packet from node and send next one.
       //Increment p->LPAcked, p->LPAvail
       //Sliding window stuff.
+      ackNumber = (unsigned int) binary2int(packetinfo->ackNumber, 4);
 
-      if(p->LPAcked == (unsigned int) binary2int(packetinfo->ackNumber, 4))
+      if(p->LPAcked == ackNumber)
         {
           p->dupCounter++;
 
@@ -508,12 +517,14 @@ void parse_data(packet_info* packetinfo, peer* p)
         }
       else
         {
-          delno = (unsigned int) binary2int(packetinfo->ackNumber, 4) - p->LPAcked;
+          delno = ackNumber - p->LPAcked;
 
           for (int i = 0; i < delno; i++)
             {
               delete_node(p->tosend);
             }
+
+          p->LPAcked = ackNumber;
         }
 
       break;
