@@ -63,9 +63,9 @@ struct peer {
   int                busy;                // Are we requesting DATA from this peer?
   uint8_t            chunk[HASH_SIZE];    // identifies the chunk being obtained from this peer
                                           // sent by this peer.
-  /* Flow control/reliability state
-     Note: use only for DATA packets
-   */
+
+  /* Flow control/reliability state.  Note: use only for DATA/ACK packets */
+
   unsigned int       LPAcked;     //Last packet Acked
   unsigned int       LPSent;      //Last packet sent
   unsigned int       LPAvail;     //Last packet available (maximum packet able to send)

@@ -14,6 +14,12 @@
  * TODO: I've made an append function for linked lists. Use it to append
  * p->tosend and gen_* linked lists.
  *
+ * TODO: We need to retransmit a GET if the peer hasn't responded to us.
+ * Maybe use the peer->busy field? Set it only if we get the first DATA
+ * packet from that peer?
+ *
+ * TODO: Timeouts.
+ *
  */
 
 

@@ -119,7 +119,7 @@ void peer_run(bt_config_t *config) {
     /* Loop through all peers and send packets to them using
      * a sliding window protocol. */
     HASH_ITER(hh, peer_list, p, tmp) {
-      sliding_send(p);
+      sliding_send(p, sock);
     }
 
     /* Insert code here to update 'tv' */
@@ -350,13 +350,30 @@ void make_chunktable(char* chunk_file, chunk_table** table, int flag)
 
 /***************************************************************************/
 /* @brief Sends packets to peer p according to the sliding window protocol */
-/*        state                                                            */
-/* @param packetinfo Contains the details of the packet to be sent         */
-/* @p     The peer state                                                   */
+/*        state.                                                           */
+/* @p     The peer state.                                                  */
 /***************************************************************************/
-void sliding_send(packet_info* packetinfo, peer* p)
+void sliding_send(peer* p, int sock)
 {
+  node* cur;
 
+  if(!p->tosend)
+    return;
+
+  cur = p->tosend->first;
+
+  for(cur; cur != NULL; cur = cur->next)
+    {
+      if(cur->type) // DATA/ACK packet
+        {
+
+        }
+      else          // Any other packet
+        {
+          sendto(sock, cur->data, DATA_SIZE, 0,
+                 (struct sockaddr*)(&p->addr), sizeof(p-addr));
+        }
+    }
 }
 
 
