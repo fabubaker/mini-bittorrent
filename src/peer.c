@@ -88,8 +88,8 @@ void peer_run(bt_config_t *config) {
   //  spiffy_init(config->identity, (struct sockaddr *)&myaddr, sizeof(myaddr));
 
   struct timeval tv;
-  tv.tv_sec  = 10;
-  tv.tv_usec = 500000; // 10.5 seconds in the beginning
+  tv.tv_sec  = 3; // 3 seconds in the beginning
+  tv.tv_usec = 0;
 
   while (1) {
     int nfds;
@@ -123,8 +123,8 @@ void peer_run(bt_config_t *config) {
     }
 
     /* Insert code here to update 'tv' */
-    tv.tv_sec = 10;
-    tv.tv_usec = 500000; // 10.5 seconds in the beginning
+    tv.tv_sec = 3; // 3 seconds
+    tv.tv_usec = 0;
   }
 }
 
@@ -356,29 +356,41 @@ void make_chunktable(char* chunk_file, chunk_table** table, int flag)
 void sliding_send(peer* p, int sock)
 {
   node* cur;
-  unsigned int no = p->LPAvail - p->LPSent;
+  struct timespec now;
 
   if(!p->tosend)
     return;
+
+  clock_gettime(CLOCK_MONOTONIC, &now);
+
+  long long unsigned int diff =
+    1000 * (now.tv_sec - start.tv_sec) +
+    (now.tv_nsec - start.tv_nsec) / 1000000; // Convert to ms
+
+  /* Check if this peer timed out. */
+  if(diff > 3000) // ms
+    /* Timed out, we need to reset packets */
+    p->LPSent = p->LPAcked;
 
   cur = p->tosend->first;
 
   for(cur; cur != NULL; cur = cur->next)
     {
-      if(cur->type) // DATA/ACK packet
+      if(cur->type) // DATA packet
         {
-          for(unsigned int i = 0; i < no ; i++)
+          if(p->LPSent < p-<LPAvail)
             {
               sendto(sock, cur->data, DATA_SIZE, 0,
                      (struct sockaddr*)(&p->addr), sizeof(p-addr));
-
+              clock_gettime(CLOCK_MONOTONIC, &p->start_time);
               p->LPSent++;
             }
         }
-      else          // Any other packet
+      else        // Any other packet
         {
           sendto(sock, cur->data, DATA_SIZE, 0,
                  (struct sockaddr*)(&p->addr), sizeof(p-addr));
+          delete_node(p->tosend);
         }
     }
 }

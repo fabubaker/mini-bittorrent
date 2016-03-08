@@ -494,6 +494,7 @@ void parse_data(packet_info* packetinfo, peer* p)
         p->tosend = append(gen_ACK(p->LPRecv, 3), p->tosend);
         break;
       }
+      /* We received the next expected packet */
       else {
         HASH_FIND(hh, get_chunks, p->chunk, HASH_SIZE, find);
 
@@ -527,13 +528,16 @@ void parse_data(packet_info* packetinfo, peer* p)
         {
           p->dupCounter++;
 
-          if(p->dupCounter == 3)
+          if(p->dupCounter >= 3)
             {
-              // Resend the lost packets
+              /* Resend the lost packets */
+              /* I guess this happens automatically
+               * because I don't delete any nodes? */
             }
         }
       else
         {
+          p->dupCounter = 0;
           delno = ackNumber - p->LPAcked;
 
           for (int i = 0; i < delno; i++)
@@ -542,6 +546,7 @@ void parse_data(packet_info* packetinfo, peer* p)
             }
 
           p->LPAcked = ackNumber;
+          p->LPAvail = p->LPAcked + 8;
         }
 
       break;
