@@ -106,10 +106,10 @@ void delete_node(ll* list)
 /*********************************************************************/
 ll* append(ll* list1, ll* list2)
 {
-  if(!list1)
+  if(!list1 || !list1->count)
     return list2;
 
-  if(!list2)
+  if(!list2 || !list2->count)
     return list1;
 
   list1->last->next = list2->first;

@@ -21,6 +21,9 @@ size_t       max_conn;              // Provided in argv
 char*        master_data_file;      // Provided in master_chunks file
 char*        output_file;           // Provided in STDIN
 
+size_t       finished = 0;          // Keep track of completed chunks.
+
+size_t       debugcount = 0;
 
 /* Definitions */
 
@@ -95,6 +98,7 @@ void peer_run(bt_config_t *config) {
     int nfds;
     peer* p; peer* tmp;
 
+    FD_ZERO(&readfds);
     FD_SET(STDIN_FILENO, &readfds);
     FD_SET(sock, &readfds);
 
@@ -161,11 +165,16 @@ void process_inbound_udp(int sock) {
   mmemclear(find->buf);
   mmemcat(find->buf, buf, BUFLEN);
 
-  printf("PROCESS_INBOUND_UDP SKELETON -- replace!\n"
-         "Incoming message from %s:%d\n%s\n\n",
+  printf("Incoming message from %s:%d\n\n",
          inet_ntoa(from.sin_addr),
-         ntohs(from.sin_port),
-         buf);
+         ntohs(from.sin_port));
+
+#ifdef DEBUG
+  if (debug & DEBUG_SOCKETS)
+    {
+      print_packet(buf, RECV);
+    }
+#endif
 
   packet_info packetinfo;
   bzero(&packetinfo, sizeof(packetinfo));
@@ -185,14 +194,15 @@ void process_inbound_udp(int sock) {
    * Use HASH_COUNT to determine if there are any chunks
    * left to be received.
    */
+  if(HASH_COUNT(get_chunks) == finished && get_chunks != NULL)
+    {
+      printf("GOT \n");
+    }
 }
 
 void process_get(char *chunkfile, char *outputfile) {
   peer* find; chunk_table* find2;
-  peer* tmp;  ll* llget = create_ll();
-
-  if (!get_chunks)
-    return;
+  peer* tmp ; chunk_table* tmp2;  ll* llget = create_ll();
 
   output_file = malloc(strlen(outputfile));
   strcpy(output_file, outputfile);
@@ -200,7 +210,7 @@ void process_get(char *chunkfile, char *outputfile) {
   make_chunktable(chunkfile, &get_chunks, 2);
 
   /* Iterate through all the chunks to get and create a linked list */
-  HASH_ITER(hh, get_chunks, find2, tmp) {
+  HASH_ITER(hh, get_chunks, find2, tmp2) {
     add_node(llget, find2->chunk, HASH_SIZE, 0);
   }
 
@@ -244,7 +254,7 @@ void global_populate(bt_config_t* config)
   free(buf);
 
   /* Convert peers from linked list to hash table   */
-  convert_LL2HT(config->peers, &peer_list);
+  convert_LL2HT(config->peers, &peer_list, config->identity);
 
   /* Open the master_chunk file and make a hash table out of it  */
   make_chunktable(config->chunk_file, &master_chunks, 0);
@@ -260,13 +270,16 @@ void global_populate(bt_config_t* config)
 /* @param ll_peers The linked list of peers                               */
 /* @param ht_peers The hash table of peers                                */
 /**************************************************************************/
-void convert_LL2HT(bt_peer_t* ll_peers, peer** ht_peers)
+void convert_LL2HT(bt_peer_t* ll_peers, peer** ht_peers, short myid)
 {
   bt_peer_t *cur = NULL;
   peer* tmppeer  = NULL;
 
   for(cur = ll_peers; cur; cur = cur->next)
     {
+      if(cur->id == myid)
+        continue;
+
       tmppeer = calloc(1, sizeof(peer));
 
       tmppeer->id = cur->id;
@@ -325,11 +338,11 @@ void make_chunktable(char* chunk_file, chunk_table** table, int flag)
 
   while((len = getline(&buf, &n, file)) != -1)
     {
-      char tmpbuf[HASH_SIZE+10] = {0};
+      char tmpbuf[HASH_SIZE*2] = {0};
 
       tmptable = calloc(1,sizeof(chunk_table));
-      sscanf(buf, "%zu %s", &tmptable->id, tmpbuf);
-      ascii2hex(tmpbuf, HASH_SIZE+10, tmptable->chunk);
+      sscanf(buf, "%zu %s", &(tmptable->id), tmpbuf);
+      ascii2hex(tmpbuf, HASH_SIZE*2, tmptable->chunk);
 
       if(flag == 2)
         tmptable->data = create_bytebuf(CHUNK_SIZE); // To store incoming DATA packs
@@ -356,41 +369,59 @@ void make_chunktable(char* chunk_file, chunk_table** table, int flag)
 void sliding_send(peer* p, int sock)
 {
   node* cur;
-  struct timespec now;
+  //struct timespec now;
 
   if(!p->tosend)
     return;
 
-  clock_gettime(CLOCK_MONOTONIC, &now);
+  //clock_gettime(CLOCK_MONOTONIC, &now);
 
-  long long unsigned int diff =
-    1000 * (now.tv_sec - start.tv_sec) +
-    (now.tv_nsec - start.tv_nsec) / 1000000; // Convert to ms
+  /* long long unsigned int diff = */
+  /*   1000 * (now.tv_sec - p->start_time.tv_sec) + */
+  /*   (now.tv_nsec - p->start_time.tv_nsec) / 1000000; // Convert to ms */
 
   /* Check if this peer timed out. */
-  if(diff > 3000) // ms
-    /* Timed out, we need to reset packets */
-    p->LPSent = p->LPAcked;
+  /* if(diff > 3000) // ms */
+  /*   /\* Timed out, we need to reset packets *\/ */
+  /*   p->LPSent = p->LPAcked; */
 
   cur = p->tosend->first;
 
-  for(cur; cur != NULL; cur = cur->next)
+  while(cur != NULL)
     {
       if(cur->type) // DATA packet
         {
-          if(p->LPSent < p-<LPAvail)
+          if(p->LPSent < p->LPAvail)
             {
               sendto(sock, cur->data, DATA_SIZE, 0,
-                     (struct sockaddr*)(&p->addr), sizeof(p-addr));
-              clock_gettime(CLOCK_MONOTONIC, &p->start_time);
+                     (struct sockaddr*)(&p->addr), sizeof(p->addr));
+              //clock_gettime(CLOCK_MONOTONIC, &p->start_time);
+
+#ifdef DEBUG
+              if (debug & DEBUG_SOCKETS)
+                {
+                  print_packet(cur->data, SEND);
+                }
+#endif
+
               p->LPSent++;
             }
+          cur = cur->next;
         }
       else        // Any other packet
         {
           sendto(sock, cur->data, DATA_SIZE, 0,
-                 (struct sockaddr*)(&p->addr), sizeof(p-addr));
+                 (struct sockaddr*)(&p->addr), sizeof(p->addr));
+
+#ifdef DEBUG
+          if (debug & DEBUG_SOCKETS)
+            {
+              print_packet(cur->data, SEND);
+            }
+#endif
+
           delete_node(p->tosend);
+          cur = p->tosend->first;
         }
     }
 }
@@ -401,11 +432,12 @@ void choose_peer()
   peer* p; peer* tmp;
   chunk_table* find; chunk_table* tmp2;
   chunk_table* find2;
-  ll* llget = create_ll();
 
   /* If the user hasn't requested anything, exit immediately */
   if (!get_chunks)
     return;
+
+  ll* llget = create_ll();
 
   /* Iterate through each peer to decide which chunk to get */
   HASH_ITER(hh, peer_list, p, tmp) {
@@ -421,7 +453,7 @@ void choose_peer()
 
       HASH_FIND(hh, get_chunks, find->chunk, HASH_SIZE, find2);
 
-      if(!find2->requested)
+      if(!find2 || !find2->requested)
         {
           find2->requested = 1;
 
@@ -439,8 +471,27 @@ void choose_peer()
         }
     }
   }
+
+  remove_ll(llget);
 }
 
+chunk_table* duptable(chunk_table* src)
+{
+  chunk_table* dst;
+
+  dst = malloc(sizeof(chunk_table));
+
+  memcpy(dst->chunk, src->chunk, HASH_SIZE);
+
+  dst->id = src->id;
+
+  return dst;
+}
+
+int HT_count(chunk_table* table)
+{
+  return HASH_COUNT(table);
+}
 /*
   Notes:
 

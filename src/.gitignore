@@ -22,3 +22,5 @@ spiffy.c
 spiffy.h
 test_input_buffer.c
 topo.map
+
+.gdbinit

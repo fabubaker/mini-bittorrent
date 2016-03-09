@@ -37,6 +37,6 @@ void  remove_ll(ll* list);
 void add_node(ll* list, uint8_t* data, size_t n, int type);
 void delete_node(ll* list);
 
-void append(ll* list1, ll* list2);
+ll* append(ll* list1, ll* list2);
 
 /* End Linked list */

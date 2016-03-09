@@ -9,6 +9,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "debug.h"
 #include "spiffy.h"
@@ -24,6 +25,9 @@
 #define HASH_SIZE     20
 #define PORT_LEN      10
 #define PEER_KEY_LEN  INET_ADDRSTRLEN + 5 + PORT_LEN
+
+#define SEND          0
+#define RECV          1
 
 typedef struct chunk_table chunk_table;
 typedef struct peer peer;
@@ -86,8 +90,10 @@ void process_get(char *chunkfile, char *outputfile);
 void handle_user_input(char *line, void *cbdata);
 
 void global_populate(bt_config_t* config);
-void convert_LL2HT(bt_peer_t* ll_peers, peer** ht_peers);
+void convert_LL2HT(bt_peer_t* ll_peers, peer** ht_peers, short myid);
 void make_chunktable(char* chunk_file, chunk_table** table, int flag);
+void sliding_send(peer* p, int sock);
 void choose_peer();
+chunk_table* duptable(chunk_table* src);
 
 #endif

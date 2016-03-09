@@ -31,10 +31,11 @@ extern size_t       max_conn;          // Provided in argv
 extern char*        master_data_file;  // Provided in master_chunks file
 extern char*        output_file;       // Provided in STDIN
 
-/* Creates a bytebuf struct. The bytebuf's buffer has bufsize bytes allocated.
- * Note that the bytebuf must be freed outside the function.
- * Arguments:
- *      1. bufsize: Length of the buf argument.
+extern size_t       finished;           // Keep track of completed chunks.
+
+/* @brief Creates a bytebuf struct. The bytebuf's buffer has bufsize bytes allocated.
+ *        Note that the bytebuf must be freed outside the function, using delete_bytebuf.
+ * @param bufsize: Length of the buf argument.
  */
 struct byte_buf* create_bytebuf(size_t bufsize)
 {
@@ -56,25 +57,33 @@ struct byte_buf* create_bytebuf(size_t bufsize)
   return b;
 }
 
-/* Moves <size> bytes, starting from <tempRequest>'s pos argument, into 
- * the argument binaryNumber.
- * Arguments:
- *      1. binaryNumber: Destination buffer. Must be at least <size> bytes.
- *      2. tempRequest: Source. Copying from tempRequest->buf
- *      3. size: Number of bytes to copy.
+/**************************************************/
+/* @brief Free a bytebuf and all of its contents. */
+/* @param b - The bytebuf to free                 */
+/**************************************************/
+void delete_bytebuf(struct byte_buf* b)
+{
+  free(b->buf);
+  free(b);
+}
+
+/* @brief Moves <size> bytes, starting from <tempRequest>'s pos argument, into
+ *        the argument binaryNumber.
+ * @param binaryNumber: Destination buffer. Must be at least <size> bytes.
+ * @param tempRequest: Source. Copying from tempRequest->buf
+ * @param size: Number of bytes to copy.
  */
 void mmemmove(uint8_t *binaryNumber, byte_buf *tempRequest, int size){
   memmove(binaryNumber, tempRequest->buf + tempRequest->pos, size);
   tempRequest->pos += size;
 }
 
-/* Concatenates the contents of <binaryNumber> to <tempRequest>'s buf
- * argument.
- * Arguments:
- *      1. tempRequest: tempRequest->buf is the destination buffer.
- *      2. binaryNumber: Source buffer.
- *      3. size: Number of bytes to copy from binaryNumber.
- */ 
+/* @brief Concatenates the contents of <binaryNumber> to <tempRequest>'s buf
+ *        argument.
+ * @param tempRequest: tempRequest->buf is the destination buffer.
+ * @param binaryNumber: Source buffer.
+ * @param size: Number of bytes to copy from binaryNumber.
+ */
 void mmemcat(byte_buf *tempRequest, uint8_t *binaryNumber, int size){
   memmove(tempRequest->buf + tempRequest->pos, binaryNumber, size);
   tempRequest->pos += size;
@@ -87,10 +96,9 @@ void mmemclear(byte_buf *b)
   bzero(b->buf, b->bufsize);
 }
 
-/* Converts a given binary number to an int.
- * Arguments: 
- *      1. binaryNumber: Number to convert.
- *      2. len: Length of the buffer.
+/* @brief Converts a given binary number to an int.
+ * @param binaryNumber: Number to convert.
+ * @param len: Length of the buffer.
  */
 int binary2int(uint8_t *buf, int len){
   char temp[2*len];
@@ -100,13 +108,12 @@ int binary2int(uint8_t *buf, int len){
   return ret;
 }
 
-/* First converts decimalNumber from decimal to hex. Next, it passes the
- * result to the given hex2binary function.
- * Arguments:
- *      1. decimalNumber: Number to be converted.
- *      2. bytesNeeded: The maximum possible number of hex bytes needed to
- *         represent the number.
- *      3. binaryNumber: buffer where the binary number is stored
+/* @brief First converts decimalNumber from decimal to hex. Next, it passes the
+ *        result to the given hex2binary function.
+ * @param decimalNumber: Number to be converted.
+ * @param bytesNeeded: The maximum possible number of hex bytes needed to
+ *        represent the number.
+ * @param binaryNumber: buffer where the binary number is stored
  */
 void dec2hex2binary(int decimalNumber, int bytesNeeded, uint8_t* binaryNumber){
 
@@ -144,10 +151,9 @@ void dec2hex2binary(int decimalNumber, int bytesNeeded, uint8_t* binaryNumber){
 }
 
 
-/* Pareses a given, complete packet.
- * Arguments:
- *      1. packet: The actual packet to be parsed.
- *      2. myPack: A struct that will contain information about the packet.
+/* @brief Parses a given, complete packet.
+ * @param packet: The actual packet to be parsed.
+ * @param myPack: A struct that will contain information about the packet.
  */
 void parse_packet(uint8_t *packet, packet_info* myPack){
 
@@ -156,7 +162,7 @@ void parse_packet(uint8_t *packet, packet_info* myPack){
 
   memcpy(tempRequest->buf, packet, PACKET_LENGTH);
 
-  mmemmove(myPack->magicNumber, tempRequest,       2);
+  mmemmove(myPack->magicNumber,   tempRequest,     2);
   mmemmove(myPack->versionNumber, tempRequest,     1);
 
   /*
@@ -183,6 +189,7 @@ void parse_packet(uint8_t *packet, packet_info* myPack){
   int totalPacketLength = binary2int(myPack->totalPacketLength, 2);
 
   mmemmove(myPack->body, tempRequest, totalPacketLength - headerLength);
+  delete_bytebuf(tempRequest);
 }
 
 //Test later
@@ -194,12 +201,11 @@ ll* gen_ACK(int ackNum, int copies){
 
   uint8_t magicNumber[2];
   uint8_t versionNumber[1] = {VERSION_NUMBER};
-  uint8_t packetType[1] = {DATA_TYPE};
+  uint8_t packetType[1] = {ACK_TYPE};
   uint8_t headerLength[2];
   uint8_t totalPacketLength[2];
   uint8_t sequenceNumber[4] = {0,0,0,0};
   uint8_t ackNumber[4];
-
 
   bzero(magicNumber, 2);
   bzero(headerLength, 2);
@@ -208,7 +214,7 @@ ll* gen_ACK(int ackNum, int copies){
 
   dec2hex2binary(MAGIC_NUMBER, 4, magicNumber);
   dec2hex2binary(HEADER, 4, headerLength);
-  dec2hex2binary(HEADER + DATA_LENGTH, 4, totalPacketLength);
+  dec2hex2binary(HEADER, 4, totalPacketLength);
   dec2hex2binary(ackNum, 8, ackNumber);
 
   mmemcat(tempRequest, magicNumber,       2);
@@ -254,11 +260,11 @@ ll* gen_DATA(uint8_t *chunkHash) {
 
   FILE *fp = fopen(master_data_file, "r");
 
-  if(!(fseek(fp, id * CHUNK_SIZE, 0))){
+  if(!(fseek(fp, id * CHUNK_SIZE, SEEK_SET))){
     //Error!
   }
 
-  if(fread((char *)buf, 1, CHUNK_SIZE, fp) == 0){ //BROKEN?
+  if(fread((char *)buf, CHUNK_SIZE, 1, fp) == 0){ //BROKEN?
     //Short count!
   }
 
@@ -301,6 +307,7 @@ ll* gen_DATA(uint8_t *chunkHash) {
 
     add_node(myLL, tempRequest->buf, HEADER + DATA_LENGTH, 1);
     packCounter++;
+    seqNumber++;
     bufPos += DATA_LENGTH;
   }
   return myLL;
@@ -502,15 +509,25 @@ void parse_data(packet_info* packetinfo, peer* p)
           // Badstuff
 
         mmemcat(find->data, packetinfo->body, totalPacketLength - headerLength);
+
+        p->LPRecv = seqNumber;
+
         if(find->data->pos == CHUNK_SIZE) { //Complete Chunk!
           find->gotcha = 1;
           p->busy = 0;
-          HASH_ADD(hh, has_chunks, chunk, CHUNK, find);
-          //Check sum here, resend if necessary
+          p->LPRecv = 0; // Reset state.
+
+          /* copying is to ensure consistency within the Hash Table lib */
+          chunk_table* copy = duptable(find);
+
+          HASH_ADD(hh, has_chunks, chunk, CHUNK, copy);
+          // Check sum here, resend if necessary
+          // Save to file;
+          save2file(find);
+          finished++;
         }
         //Send ACK
-        p->LPRecv = seqNumber;
-        p->tosend = append(gen_ACK(p->tosend, 1), p->tosend);
+        p->tosend = append(gen_ACK(seqNumber, 1), p->tosend);
       }
 
       break;
@@ -549,6 +566,14 @@ void parse_data(packet_info* packetinfo, peer* p)
           p->LPAvail = p->LPAcked + 8;
         }
 
+      if(p->LPAcked == 512) // We send 512 packets of a 1000 bytes each.
+        {
+          // Reset the sliding window state for this peer.
+          p->LPAcked = 0;
+          p->LPSent  = 0;
+          p->LPAvail = 8;
+        }
+
       break;
 
     case 5:
@@ -562,6 +587,97 @@ void parse_data(packet_info* packetinfo, peer* p)
     */
   }
 }
+
+void save2file(chunk_table* chunk)
+{
+  FILE* fp;
+
+  fp = fopen(output_file, "a");
+
+  fseek(fp, chunk->id * CHUNK_SIZE, SEEK_SET);
+
+  fwrite(chunk->data->buf, CHUNK_SIZE, 1, fp);
+
+  fclose(fp);
+}
+
+/***********************************************************************/
+/* @brief A debugging utility that prints packet information to STDIN. */
+/* @param packet - The packet to print.                                */
+/***********************************************************************/
+void print_packet(uint8_t* packet, int i)
+{
+  packet_info myPack = {0};
+  byte_buf *tempRequest = create_bytebuf(PACKET_LENGTH);
+  mmemclear(tempRequest);
+
+  memcpy(tempRequest->buf, packet, PACKET_LENGTH);
+
+  mmemmove(myPack.magicNumber,        tempRequest, 2);
+  mmemmove(myPack.versionNumber,      tempRequest, 1);
+  mmemmove(myPack.packetType,         tempRequest, 1);
+  mmemmove(myPack.headerLength,       tempRequest, 2);
+  mmemmove(myPack.totalPacketLength,  tempRequest, 2);
+  mmemmove(myPack.sequenceNumber,     tempRequest, 4);
+  mmemmove(myPack.ackNumber,          tempRequest, 4);
+
+  int hlen = binary2int(myPack.headerLength,      2);
+  int plen = binary2int(myPack.totalPacketLength, 2);
+  int type = binary2int(myPack.packetType, 1);
+
+  char typestr[10];
+
+  switch (type)
+    {
+    case 0:
+      sprintf(typestr, "WHOHAS");
+      break;
+
+    case 1:
+      sprintf(typestr, "IHAVE");
+      break;
+
+    case 2:
+      sprintf(typestr, "GET");
+      break;
+
+    case 3:
+      sprintf(typestr, "DATA");
+      break;
+
+    case 4:
+      sprintf(typestr, "ACK");
+      break;
+
+    case 5:
+      sprintf(typestr, "DENIED");
+      break;
+
+    default:
+      sprintf(typestr, "DEFAULT");
+      break;
+
+    }
+
+  //mmemmove(myPack.body, tempRequest, plen - hlen);
+
+  printf("\n###############################\n");
+  if(i == SEND) printf("Sending packet with contents:\n");
+  if(i == RECV) printf("Receiving packet with contents:\n");
+  printf("Magic   Number: %d\n", binary2int(myPack.magicNumber, 2));
+  printf("Version Number: %d\n", binary2int(myPack.versionNumber, 1));
+  printf("Packet  Type  : %s\n", typestr);
+  printf("Header  Len   : %d\n", hlen);
+  printf("Packet  Len   : %d\n", plen);
+  printf("Seq     No    : %d\n", binary2int(myPack.sequenceNumber , 4));
+  printf("Ack     No    : %d\n", binary2int(myPack.ackNumber , 4));
+  printf("Hash    Nos   : %d\n", binary2int(myPack.numberHashes , 4));
+  //printf("Body          : %d\n", binary2int(myPack.numberHashes , 4));
+  printf("###############################\n\n");
+
+  delete_bytebuf(tempRequest);
+}
+
 
 /* #ifdef TESTING */
 /* int main(){ */

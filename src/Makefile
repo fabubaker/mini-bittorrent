@@ -1,6 +1,6 @@
 # Some variables
 CC 		= gcc
-CFLAGS		= -g -Wall -Wextra -Werror -DDEBUG
+CFLAGS		= -g3 -Wall -Wextra -Werror -DDEBUG
 LDFLAGS		= -lm
 TESTDEFS	= -DTESTING			# comment this out to disable debugging code
 OBJS		= peer.o bt_parse.o debug.o input_buffer.o chunk.o sha.o
@@ -29,6 +29,12 @@ make-chunks: $(MK_CHUNK_OBJS)
 	$(CC) $(CFLAGS) $(MK_CHUNK_OBJS) -c -o $@ $(LDFLAGS)
 
 # Debugging utility code
+
+test:
+	./peer -p ./example/nodes.map -c ./example/A.haschunks -f ./example/C.chunks -m 4 -i 1 -d 6
+
+test2:
+	./peer -p ./example/nodes.map -c ./example/B.haschunks -f ./example/C.chunks -m 4 -i 2 -d 6
 
 debug-text.h: debug.h
 	./debugparse.pl < debug.h > debug-text.h

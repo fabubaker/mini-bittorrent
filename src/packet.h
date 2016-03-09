@@ -17,8 +17,8 @@
 #include "uthash.h"
 #include "peer.h"
 
-#define DATA_LENGTH	    1000  // Size of the data in a DATA packet
-#define CHUNK_SIZE		512000// Size of a data chunk in bytes
+#define DATA_LENGTH	    1024  // Size of the data in a DATA packet
+#define CHUNK_SIZE		  524288// Size of a data chunk in bytes
 #define MAX_NUM_HASH    74 	  // Maximum possible number of chunks in a packet
 #define PACKET_LENGTH   1500  // Maximum packet length
 
@@ -60,6 +60,7 @@ struct packet_info {
 
 typedef struct byte_buf byte_buf;
 typedef struct packet_info packet_info;
+typedef struct chunk_table chunk_table;
 typedef struct peer        peer;
 
 void mmemmove(uint8_t *binaryNumber, byte_buf *tempRequest, int size);
@@ -72,9 +73,11 @@ ll* gen_WHOIGET(ll *list, int packetCode);
 ll* gen_DATA(uint8_t *chunkHash);
 void parse_packet(uint8_t *packet, packet_info* myPack);
 void parse_data(packet_info* packetinfo, peer* p);
+void save2file(chunk_table* chunk);
+
+void print_packet(uint8_t* packet, int i);
 
 struct byte_buf*  create_bytebuf(size_t bufsize);
 void              delete_bytebuf(struct byte_buf* buf);
-void              feed_bytebuf();
 
 #endif
