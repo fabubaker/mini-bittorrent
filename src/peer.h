@@ -65,6 +65,7 @@ struct peer {
   struct byte_buf*   buf;
   ll*                tosend;              // list of packets to send to this peer
   int                busy;                // Are we requesting DATA from this peer?
+  int                needy;               // Are we sending DATA to this peer?
   uint8_t            chunk[HASH_SIZE];    // identifies the chunk being obtained from this peer
                                           // sent by this peer.
 
@@ -75,7 +76,9 @@ struct peer {
   unsigned int       LPAvail;     //Last packet available (maximum packet able to send)
   unsigned int       LPRecv;      //Last packet received
   int                dupCounter;  //Checks if we have a DUP'd ACK
+
   struct timespec    start_time;
+  int                ttl;
 
   UT_hash_handle     hh;
 
@@ -97,4 +100,5 @@ void choose_peer();
 chunk_table* duptable(chunk_table* src);
 
 void clean_table(chunk_table* table);
+void choose_another(peer* bad);
 #endif

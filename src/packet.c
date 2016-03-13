@@ -398,7 +398,7 @@ ll* gen_WHOIGET(ll *list, int packetCode){
     if(packetCode != 2)
       add_node(myLL, tempRequest->buf, HEADER + CHUNK * tempNumHashes + 4, 0);
     else
-      add_node(myLL, tempRequest->buf, HEADER + CHUNK * tempNumHashes, 0);
+      add_node(myLL, tempRequest->buf, HEADER + CHUNK * tempNumHashes, 2);
 
     packCounter++;
     numHashes -= MAX_NUM_HASH;
@@ -504,6 +504,13 @@ void parse_data(packet_info* packetinfo, peer* p)
     headerLength = binary2int(packetinfo->headerLength, 2);
     totalPacketLength = binary2int(packetinfo->totalPacketLength, 2);
 
+    /* We received a DATA packet, check if there's a GET in front of
+     * the send queue. If there is, delete it. */
+    /* if(p->tosend && p->tosend->first && p->tosend->first->type == 2) */
+    /*   { */
+    /*     delete_node(p->tosend); */
+    /*   } */
+
     /* Check if we received a packet we got before */
     if (seqNumber <= p->LPRecv) {
       p->tosend = append(gen_ACK(p->LPRecv, 1), p->tosend);
@@ -577,7 +584,7 @@ void parse_data(packet_info* packetinfo, peer* p)
           }
 
         p->LPAcked = ackNumber;
-        p->LPAvail = p->LPAcked + 15;
+        p->LPAvail = p->LPAcked + 8;
       }
 
     if(p->LPAcked == 512) // We send 512 packets of a 1000 bytes each.
@@ -585,7 +592,7 @@ void parse_data(packet_info* packetinfo, peer* p)
         // Reset the sliding window state for this peer.
         p->LPAcked = 0;
         p->LPSent  = 0;
-        p->LPAvail = 15;
+        p->LPAvail = 8;
       }
 
     break;
@@ -702,6 +709,13 @@ void print_packet(uint8_t* packet, int i)
   for(int i = 0; i < numh; i++)
     {
       binary2hex(myPack.body + 20 * i, 20, hash);
+      printf("Hash %d: %s \n", i, hash);
+      bzero(hash, 45);
+    }
+
+  if(type == 2) // GET
+    {
+      binary2hex(myPack.body, 20, hash);
       printf("Hash %d: %s \n", i, hash);
       bzero(hash, 45);
     }

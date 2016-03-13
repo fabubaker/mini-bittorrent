@@ -37,6 +37,9 @@ test:
 test2:
 	./peer -p ./example/test0/nodes.map -c ./example/test0/B.haschunks -f ./example/test0/C.chunks -m 4 -i 2 -d 6
 
+test3:
+	./peer -p ./example/test0/nodes.map -c ./example/test0/B.haschunks -f ./example/test0/C.chunks -m 4 -i 3 -d 6
+
 debug-text.h: debug.h
 	./debugparse.pl < debug.h > debug-text.h
 

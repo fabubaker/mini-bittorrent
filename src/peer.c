@@ -168,7 +168,11 @@ void process_inbound_udp(int sock) {
   mmemclear(find->buf);
   mmemcat(find->buf, buf, BUFLEN);
 
-  printf("Incoming message from %s:%d\n\n",
+  /* Reset timeout state */
+  clock_gettime(CLOCK_MONOTONIC, &find->start_time);
+  find->ttl = 0;
+
+  printf("Incoming message from %s:%d\n",
          inet_ntoa(from.sin_addr),
          ntohs(from.sin_port));
 
@@ -312,14 +316,18 @@ void convert_LL2HT(bt_peer_t* ll_peers, peer** ht_peers, short myid)
       tmppeer->buf        = create_bytebuf(PACKET_LENGTH);
       tmppeer->tosend     = NULL;
       tmppeer->busy       = 0;
+      tmppeer->needy      = 0;
       bzero(tmppeer->chunk, HASH_SIZE);
 
       tmppeer->LPAcked    = 0;
       tmppeer->LPSent     = 0;
-      tmppeer->LPAvail    = 15;
+      tmppeer->LPAvail    = 8;
       tmppeer->LPRecv     = 0;
 
       tmppeer->dupCounter = 0;
+
+      bzero(&(tmppeer->start_time), sizeof(tmppeer->start_time));
+      tmppeer->ttl = 0;
 
       HASH_ADD_STR( *ht_peers, key, tmppeer );
     }
@@ -398,14 +406,61 @@ void sliding_send(peer* p, int sock)
 
   //  Check if this peer timed out.
   if(diff > 1000) // ms
-    /* Timed out, we need to reset packets */
-    p->LPSent = p->LPAcked;
+    {
+      p->ttl++;
+
+      if(p->ttl == 5) // DEAD
+        {
+          if(p->busy) /* I am receiving DATA from this peer */
+            {
+              choose_another(p); /* Choose some other peer */
+            }
+
+          /* if(p->needy) /\* I am sending DATA to this peer *\/ */
+          /*   { */
+          /*     remove_ll(p->tosend); */
+          /*     p->tosend = NULL; */
+          /*   } */
+
+          /* Free up this peer's resources, he's dead */
+          remove_ll(p->tosend);
+          p->tosend = NULL;
+
+          clean_table(p->has_chunks);
+          p->has_chunks = NULL;
+
+          bzero(&(p->start_time), sizeof(p->start_time));
+          bzero(p->chunk, HASH_SIZE);
+
+          p->LPAcked    = 0;
+          p->LPSent     = 0;
+          p->LPAvail    = 8;
+          p->LPRecv     = 0;
+          p->dupCounter = 0;
+          p->busy       = 0;
+          p->needy      = 0;
+          p->ttl        = 0;
+          return;
+        }
+
+      /* Timed out, we need to resend packets */
+      p->LPSent = p->LPAcked;
+
+      /* OR, we may need to resend GET */
+      if(p->busy && p->LPRecv == 0)
+        {
+          ll* llget = create_ll();
+          add_node(llget, p->chunk, HASH_SIZE, 0);
+          p->tosend = append(gen_WHOIGET(llget, 2), p->tosend);
+          free(llget);
+        }
+    }
 
   cur = p->tosend->first;
 
   while(cur != NULL)
     {
-      if(cur->type) // DATA packet
+      if(cur->type == 1) // DATA packet
         {
           if(p->LPSent < p->LPAvail)
             {
@@ -414,6 +469,10 @@ void sliding_send(peer* p, int sock)
               clock_gettime(CLOCK_MONOTONIC, &p->start_time);
 
 #ifdef DEBUG
+              printf("Outgoing message to %s:%d\n",
+                     inet_ntoa(p->addr.sin_addr),
+                     ntohs(p->addr.sin_port));
+
               if (debug & DEBUG_SOCKETS)
                 {
                   print_packet(cur->data, SEND);
@@ -430,12 +489,15 @@ void sliding_send(peer* p, int sock)
                  (struct sockaddr*)(&p->addr), sizeof(p->addr));
 
 #ifdef DEBUG
+          printf("Outgoing message to %s:%d\n",
+                 inet_ntoa(p->addr.sin_addr),
+                 ntohs(p->addr.sin_port));
+
           if (debug & DEBUG_SOCKETS)
             {
               print_packet(cur->data, SEND);
             }
 #endif
-
           delete_node(p->tosend);
           cur = p->tosend->first;
         }
@@ -463,6 +525,11 @@ void choose_peer()
 
     if(p->busy) /* Leave him alone */
       continue;
+
+    /* If a non-GET, non-DATA packet is in queue,
+     * try some other time */
+    /* if(p->tosend && p->tosend->first && p->tosend->first->type == 0) */
+    /*   continue; */
 
     /* Iterate through each peer's chunks */
     HASH_ITER(hh, p->has_chunks, find, tmp2) {
@@ -521,10 +588,29 @@ void clean_table(chunk_table* table)
       if(cur->data)
         {
           delete_bytebuf(cur->data);
-          free(cur);
         }
+      free(cur);
     }
 }
+
+void choose_another(peer* bad)
+{
+  chunk_table* find;
+  uint8_t      chunk[HASH_SIZE];
+
+  memcpy(chunk, bad->chunk, HASH_SIZE);
+
+  HASH_FIND(hh, get_chunks, chunk, HASH_SIZE, find);
+
+  mmemclear(find->data);
+  find->requested = 0;
+  find->gotcha    = 0;
+
+  bzero(find->whohas, PEER_KEY_LEN);
+
+  /* choose_peer() will automatically select another peer */
+}
+
 
 /*
   Notes:
