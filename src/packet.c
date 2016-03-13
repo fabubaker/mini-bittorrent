@@ -179,7 +179,7 @@ void parse_packet(uint8_t *packet, packet_info* myPack){
 
   int packetType = binary2int(myPack->packetType, 1);
 
-  if(packetType == 0 || packetType == 1 || packetType == 2){
+  if(packetType == 0 || packetType == 1){
 
     mmemmove(myPack->numberHashes, tempRequest,    1);
     mmemmove(myPack->padding, tempRequest,         3);
@@ -367,8 +367,15 @@ ll* gen_WHOIGET(ll *list, int packetCode){
 
     dec2hex2binary(MAGIC_NUMBER, 4, magicNumber);
     dec2hex2binary(HEADER, 4, headerLength);
-    dec2hex2binary(HEADER + CHUNK * tempNumHashes + 4, 4,
-                   totalPacketLength);
+
+    if(packetCode != 2){
+      dec2hex2binary(HEADER + CHUNK * tempNumHashes + 4, 4,
+                     totalPacketLength);
+    } else {
+      dec2hex2binary(HEADER + CHUNK * tempNumHashes, 4,
+                     totalPacketLength);
+    }
+
     dec2hex2binary(tempNumHashes, 2, numberHashes);
 
     mmemcat(tempRequest, magicNumber,       2);
@@ -378,15 +385,21 @@ ll* gen_WHOIGET(ll *list, int packetCode){
     mmemcat(tempRequest, totalPacketLength, 2);
     mmemcat(tempRequest, sequenceNumber,    4);
     mmemcat(tempRequest, ackNumber,         4);
-    mmemcat(tempRequest, numberHashes,      1);
-    mmemcat(tempRequest, padding,           3);
+    if(packetCode != 2){
+      mmemcat(tempRequest, numberHashes,      1);
+      mmemcat(tempRequest, padding,           3);
+    }
 
     while(temp != NULL){
       mmemcat(tempRequest, temp->data, CHUNK); // No
       temp = temp->next;
     }
 
-    add_node(myLL, tempRequest->buf, HEADER + CHUNK * tempNumHashes + 4, 0);
+    if(packetCode != 2)
+      add_node(myLL, tempRequest->buf, HEADER + CHUNK * tempNumHashes + 4, 0);
+    else
+      add_node(myLL, tempRequest->buf, HEADER + CHUNK * tempNumHashes, 0);
+
     packCounter++;
     numHashes -= MAX_NUM_HASH;
   }
@@ -407,184 +420,185 @@ void parse_data(packet_info* packetinfo, peer* p)
 
   switch (packetinfo->packetType[0]) {
 
-    case 0:
+  case 0:
     /*
-      // IF WHOHAS
-         extract chunk;
-         check if chunk exists in has_chunks
-         create linked list of request chunks that we have
-         call gen_WHOIGET with IHAVE and pass in the linked list
-         should return a linked list of packets to send
-         use sendto to send the packets
+    // IF WHOHAS
+    extract chunk;
+    check if chunk exists in has_chunks
+    create linked list of request chunks that we have
+    call gen_WHOIGET with IHAVE and pass in the linked list
+    should return a linked list of packets to send
+    use sendto to send the packets
     */
-      for (uint8_t i = 0; i < n; i++){
-        HASH_FIND(hh, has_chunks, packetinfo->body + CHUNK * i, CHUNK, find);
+    for (uint8_t i = 0; i < n; i++){
+      HASH_FIND(hh, has_chunks, packetinfo->body + CHUNK * i, CHUNK, find);
 
-        if(find) add_node(tmplist, packetinfo->body + CHUNK * i, CHUNK, 0);
-      }
+      if(find) add_node(tmplist, packetinfo->body + CHUNK * i, CHUNK, 0);
+    }
 
-      p->tosend = append(gen_WHOIGET(tmplist, 1), p->tosend);
-      remove_ll(tmplist);
-      break;
+    p->tosend = append(gen_WHOIGET(tmplist, 1), p->tosend);
+    remove_ll(tmplist);
+    break;
 
-    case 1:
-      /*
-      // IF IHAVE
-         extract chunk;
-         add chunk to the hash table 'p->has_chunks';
-         Lookup chunk in 'get_chunks';
-         if that chunk has not yet been requested, change the whohas field to
-         identify this peer.
-         I'll send a GET to him later.
-         I'll put in a timer to retransmit the GET after 5 seconds.
-      }
-      */
-      for (uint8_t i = 0; i < n; i++) {
-        find = calloc(1, sizeof(chunk_table));
-        memmove(find->chunk, packetinfo->body + CHUNK * i, CHUNK);
-        find->id = 0;
-        HASH_ADD(hh, p->has_chunks, chunk, CHUNK, find);
-      }
+  case 1:
+    /*
+    // IF IHAVE
+    extract chunk;
+    add chunk to the hash table 'p->has_chunks';
+    Lookup chunk in 'get_chunks';
+    if that chunk has not yet been requested, change the whohas field to
+    identify this peer.
+    I'll send a GET to him later.
+    I'll put in a timer to retransmit the GET after 5 seconds.
+    }
+    */
+    for (uint8_t i = 0; i < n; i++) {
+      find = calloc(1, sizeof(chunk_table));
+      memmove(find->chunk, packetinfo->body + CHUNK * i, CHUNK);
+      find->id = 0;
+      HASH_ADD(hh, p->has_chunks, chunk, CHUNK, find);
+    }
 
-      break;
+    break;
 
-    case 2:
-       /* IF GET
+  case 2:
+    /* IF GET
        extract the chunk;
        check if we have it;
        If we don't, deny him. eheheh.
        if we do, send it.
-       */
-      for(uint8_t i = 0; i < n; i++) {
-        HASH_FIND(hh, has_chunks, packetinfo->body + CHUNK * i, CHUNK, find);
+    */
+    n = 1;
+    for(uint8_t i = 0; i < n; i++) {
+      HASH_FIND(hh, has_chunks, packetinfo->body + CHUNK * i, CHUNK, find);
 
-        if(find) {
-          memcpy(tempChunk, packetinfo->body + CHUNK * i, CHUNK);
-          p->tosend = append(p->tosend, gen_DATA(tempChunk));
-          bzero(tempChunk, CHUNK);
+      if(find) {
+        memcpy(tempChunk, packetinfo->body + CHUNK * i, CHUNK);
+        p->tosend = append(p->tosend, gen_DATA(tempChunk));
+        bzero(tempChunk, CHUNK);
 
-        } else {
-          //Generate a denial message.
-        }
+      } else {
+        //Generate a denial message.
+      }
+    }
+
+    break;
+    /*
+    // IF DATA
+    Gonna have to do some flow control logic here;
+    extract the data and store it in a 512KB buffer.
+    How are we gonna know we recevied the entire chunk of data?
+    ANS: use a goddamn bytebuf. when pos = 512KB, we hit gold.
+    Perform a checksum afterwards, if badhash, send GET again,
+    else write the data into a file using fseek and all.
+    */
+
+  case 3:
+    //If seq Number != Last Acked + 1, DUPACK
+    //Else, copy data into bytebuf
+    //Check, complete? If yes, gotcha = True
+    //  Perform checksum. If passes, good, else, send GET again
+    //Send ACK seqNumber, update Last acked.
+
+    seqNumber = (unsigned int) binary2int(packetinfo->sequenceNumber, 4);
+    headerLength = binary2int(packetinfo->headerLength, 2);
+    totalPacketLength = binary2int(packetinfo->totalPacketLength, 2);
+
+    /* Check if we received a packet we got before */
+    if (seqNumber <= p->LPRecv) {
+      p->tosend = append(gen_ACK(p->LPRecv, 1), p->tosend);
+      break;
+    }
+
+    /* Check if we received an inorder packet  */
+    if(seqNumber > p->LPRecv + 1) {
+      p->tosend = append(gen_ACK(p->LPRecv, 3), p->tosend);
+      break;
+    }
+    /* We received the next expected packet */
+    else {
+      HASH_FIND(hh, get_chunks, p->chunk, HASH_SIZE, find);
+
+      // if(find == NULL)
+      // Badstuff
+
+      mmemcat(find->data, packetinfo->body, totalPacketLength - headerLength);
+
+      p->LPRecv = seqNumber;
+
+      if(find->data->pos == CHUNK_SIZE) { //Complete Chunk!
+        find->gotcha = 1;
+        p->busy = 0;
+        p->LPRecv = 0; // Reset state.
+
+        /* copying is to ensure consistency within the Hash Table lib */
+        chunk_table* copy = duptable(find);
+
+        HASH_ADD(hh, has_chunks, chunk, CHUNK, copy);
+        // Check sum here, resend if necessary
+        // Save to file;
+        save2file(find);
+        finished++;
+      }
+      //Send ACK
+      p->tosend = append(gen_ACK(seqNumber, 1), p->tosend);
+    }
+
+    break;
+
+  case 4:
+    //First, check if this is a DUPACK (use p->LPAcked)
+    //If yes, increment dupack counter.
+    //  If counter == 3, send approp. packet. Set counter to 0.
+    //If not, delete packet from node and send next one.
+    //Increment p->LPAcked, p->LPAvail
+    //Sliding window stuff.
+    ackNumber = (unsigned int) binary2int(packetinfo->ackNumber, 4);
+
+    if(p->LPAcked == ackNumber)
+      {
+        p->dupCounter++;
+
+        if(p->dupCounter >= 3)
+          {
+            /* Resend the lost packets */
+            /* I guess this happens automatically
+             * because I don't delete any nodes? */
+          }
+      }
+    else
+      {
+        p->dupCounter = 0;
+        delno = ackNumber - p->LPAcked;
+
+        for (int i = 0; i < delno; i++)
+          {
+            delete_node(p->tosend);
+          }
+
+        p->LPAcked = ackNumber;
+        p->LPAvail = p->LPAcked + 15;
       }
 
-      break;
-      /*
-      // IF DATA
-         Gonna have to do some flow control logic here;
-         extract the data and store it in a 512KB buffer.
-         How are we gonna know we recevied the entire chunk of data?
-         ANS: use a goddamn bytebuf. when pos = 512KB, we hit gold.
-         Perform a checksum afterwards, if badhash, send GET again,
-         else write the data into a file using fseek and all.
-      */
-
-    case 3:
-      //If seq Number != Last Acked + 1, DUPACK
-      //Else, copy data into bytebuf
-      //Check, complete? If yes, gotcha = True
-      //  Perform checksum. If passes, good, else, send GET again
-      //Send ACK seqNumber, update Last acked.
-
-      seqNumber = (unsigned int) binary2int(packetinfo->sequenceNumber, 4);
-      headerLength = binary2int(packetinfo->headerLength, 2);
-      totalPacketLength = binary2int(packetinfo->totalPacketLength, 2);
-
-      /* Check if we received a packet we got before */
-      if (seqNumber <= p->LPRecv) {
-        p->tosend = append(gen_ACK(p->LPRecv, 1), p->tosend);
-        break;
+    if(p->LPAcked == 512) // We send 512 packets of a 1000 bytes each.
+      {
+        // Reset the sliding window state for this peer.
+        p->LPAcked = 0;
+        p->LPSent  = 0;
+        p->LPAvail = 15;
       }
 
-      /* Check if we received an inorder packet  */
-      if(seqNumber > p->LPRecv + 1) {
-        p->tosend = append(gen_ACK(p->LPRecv, 3), p->tosend);
-        break;
-      }
-      /* We received the next expected packet */
-      else {
-        HASH_FIND(hh, get_chunks, p->chunk, HASH_SIZE, find);
+    break;
 
-        // if(find == NULL)
-          // Badstuff
+  case 5:
+    // Leave this for now...
 
-        mmemcat(find->data, packetinfo->body, totalPacketLength - headerLength);
-
-        p->LPRecv = seqNumber;
-
-        if(find->data->pos == CHUNK_SIZE) { //Complete Chunk!
-          find->gotcha = 1;
-          p->busy = 0;
-          p->LPRecv = 0; // Reset state.
-
-          /* copying is to ensure consistency within the Hash Table lib */
-          chunk_table* copy = duptable(find);
-
-          HASH_ADD(hh, has_chunks, chunk, CHUNK, copy);
-          // Check sum here, resend if necessary
-          // Save to file;
-          save2file(find);
-          finished++;
-        }
-        //Send ACK
-        p->tosend = append(gen_ACK(seqNumber, 1), p->tosend);
-      }
-
-      break;
-
-    case 4:
-      //First, check if this is a DUPACK (use p->LPAcked)
-      //If yes, increment dupack counter.
-      //  If counter == 3, send approp. packet. Set counter to 0.
-      //If not, delete packet from node and send next one.
-      //Increment p->LPAcked, p->LPAvail
-      //Sliding window stuff.
-      ackNumber = (unsigned int) binary2int(packetinfo->ackNumber, 4);
-
-      if(p->LPAcked == ackNumber)
-        {
-          p->dupCounter++;
-
-          if(p->dupCounter >= 3)
-            {
-              /* Resend the lost packets */
-              /* I guess this happens automatically
-               * because I don't delete any nodes? */
-            }
-        }
-      else
-        {
-          p->dupCounter = 0;
-          delno = ackNumber - p->LPAcked;
-
-          for (int i = 0; i < delno; i++)
-            {
-              delete_node(p->tosend);
-            }
-
-          p->LPAcked = ackNumber;
-          p->LPAvail = p->LPAcked + 8;
-        }
-
-      if(p->LPAcked == 512) // We send 512 packets of a 1000 bytes each.
-        {
-          // Reset the sliding window state for this peer.
-          p->LPAcked = 0;
-          p->LPSent  = 0;
-          p->LPAvail = 8;
-        }
-
-      break;
-
-    case 5:
-      // Leave this for now...
-
-      break;
+    break;
 
     /*
-    default:
+      default:
       //WTF?
-    */
+      */
   }
 }
 
@@ -621,9 +635,18 @@ void print_packet(uint8_t* packet, int i)
   mmemmove(myPack.sequenceNumber,     tempRequest, 4);
   mmemmove(myPack.ackNumber,          tempRequest, 4);
 
+  int type = binary2int(myPack.packetType, 1);
   int hlen = binary2int(myPack.headerLength,      2);
   int plen = binary2int(myPack.totalPacketLength, 2);
-  int type = binary2int(myPack.packetType, 1);
+
+  if(type == 0 || type == 1){
+    mmemmove(myPack.numberHashes, tempRequest,    1);
+    mmemmove(myPack.padding, tempRequest,         3);
+  }
+
+  mmemmove(myPack.body, tempRequest, plen - hlen);
+
+  int numh = binary2int(myPack.numberHashes, 1);
 
   char typestr[10];
 
@@ -671,8 +694,18 @@ void print_packet(uint8_t* packet, int i)
   printf("Packet  Len   : %d\n", plen);
   printf("Seq     No    : %d\n", binary2int(myPack.sequenceNumber , 4));
   printf("Ack     No    : %d\n", binary2int(myPack.ackNumber , 4));
-  printf("Hash    Nos   : %d\n", binary2int(myPack.numberHashes , 4));
+  printf("Hash    No    : %d\n", numh);
   //printf("Body          : %d\n", binary2int(myPack.numberHashes , 4));
+
+  char hash[45] = {0};
+
+  for(int i = 0; i < numh; i++)
+    {
+      binary2hex(myPack.body + 20 * i, 20, hash);
+      printf("Hash %d: %s \n", i, hash);
+      bzero(hash, 45);
+    }
+
   printf("###############################\n\n");
 
   delete_bytebuf(tempRequest);

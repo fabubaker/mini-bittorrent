@@ -20,6 +20,7 @@ size_t       max_conn;              // Provided in argv
 
 char*        master_data_file;      // Provided in master_chunks file
 char*        output_file;           // Provided in STDIN
+char*        get_chunk_file;        // Provided in STDIN
 
 size_t       finished = 0;          // Keep track of completed chunks.
 
@@ -80,7 +81,8 @@ void peer_run(bt_config_t *config) {
 
   bzero(&myaddr, sizeof(myaddr));
   myaddr.sin_family = AF_INET;
-  myaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+  //myaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+  inet_aton("127.0.0.1", (struct in_addr *)&myaddr.sin_addr.s_addr);
   myaddr.sin_port = htons(config->myport);
 
   if (bind(sock, (struct sockaddr *) &myaddr, sizeof(myaddr)) == -1) {
@@ -88,10 +90,10 @@ void peer_run(bt_config_t *config) {
     exit(-1);
   }
 
-  //  spiffy_init(config->identity, (struct sockaddr *)&myaddr, sizeof(myaddr));
+  spiffy_init(config->identity, (struct sockaddr *)&myaddr, sizeof(myaddr));
 
   struct timeval tv;
-  tv.tv_sec  = 3; // 3 seconds in the beginning
+  tv.tv_sec  = 1; // 3 seconds in the beginning
   tv.tv_usec = 0;
 
   while (1) {
@@ -118,7 +120,8 @@ void peer_run(bt_config_t *config) {
     }
 
     /* Decide which peer to get which chunk from */
-    choose_peer();
+    if(get_chunks)
+      choose_peer();
 
     /* Loop through all peers and send packets to them using
      * a sliding window protocol. */
@@ -127,7 +130,7 @@ void peer_run(bt_config_t *config) {
     }
 
     /* Insert code here to update 'tv' */
-    tv.tv_sec = 3; // 3 seconds
+    tv.tv_sec = 1; // 3 seconds
     tv.tv_usec = 0;
   }
 }
@@ -147,7 +150,7 @@ void process_inbound_udp(int sock) {
   bzero(keybuf, PEER_KEY_LEN);
 
   fromlen = sizeof(from);
-  recvfrom(sock, buf, BUFLEN, 0, (struct sockaddr *) &from, &fromlen);
+  spiffy_recvfrom(sock, buf, BUFLEN, 0, (struct sockaddr *) &from, &fromlen);
 
   sprintf(keybuf, "%s:%d",
           inet_ntoa(from.sin_addr),
@@ -196,7 +199,17 @@ void process_inbound_udp(int sock) {
    */
   if(HASH_COUNT(get_chunks) == finished && get_chunks != NULL)
     {
-      printf("GOT \n");
+      printf("GOT %s\n", get_chunk_file);
+      clean_table(get_chunks);
+      get_chunks = NULL;
+
+      free(get_chunk_file);
+      get_chunk_file = NULL;
+
+      free(output_file);
+      output_file = NULL;
+
+      finished = 0;
     }
 }
 
@@ -204,8 +217,11 @@ void process_get(char *chunkfile, char *outputfile) {
   peer* find; chunk_table* find2;
   peer* tmp ; chunk_table* tmp2;  ll* llget = create_ll();
 
-  output_file = malloc(strlen(outputfile));
+  output_file = calloc(1, strlen(outputfile)+1);
   strcpy(output_file, outputfile);
+
+  get_chunk_file = calloc(1, strlen(chunkfile)+1);
+  strcpy(get_chunk_file, chunkfile);
 
   make_chunktable(chunkfile, &get_chunks, 2);
 
@@ -300,7 +316,7 @@ void convert_LL2HT(bt_peer_t* ll_peers, peer** ht_peers, short myid)
 
       tmppeer->LPAcked    = 0;
       tmppeer->LPSent     = 0;
-      tmppeer->LPAvail    = 8;
+      tmppeer->LPAvail    = 15;
       tmppeer->LPRecv     = 0;
 
       tmppeer->dupCounter = 0;
@@ -369,21 +385,21 @@ void make_chunktable(char* chunk_file, chunk_table** table, int flag)
 void sliding_send(peer* p, int sock)
 {
   node* cur;
-  //struct timespec now;
+  struct timespec now;
 
   if(!p->tosend)
     return;
 
-  //clock_gettime(CLOCK_MONOTONIC, &now);
+  clock_gettime(CLOCK_MONOTONIC, &now);
 
-  /* long long unsigned int diff = */
-  /*   1000 * (now.tv_sec - p->start_time.tv_sec) + */
-  /*   (now.tv_nsec - p->start_time.tv_nsec) / 1000000; // Convert to ms */
+  long long unsigned int diff =
+    1000 * (now.tv_sec - p->start_time.tv_sec) +
+    (now.tv_nsec - p->start_time.tv_nsec) / 1000000; // Convert to ms
 
-  /* Check if this peer timed out. */
-  /* if(diff > 3000) // ms */
-  /*   /\* Timed out, we need to reset packets *\/ */
-  /*   p->LPSent = p->LPAcked; */
+  //  Check if this peer timed out.
+  if(diff > 1000) // ms
+    /* Timed out, we need to reset packets */
+    p->LPSent = p->LPAcked;
 
   cur = p->tosend->first;
 
@@ -393,9 +409,9 @@ void sliding_send(peer* p, int sock)
         {
           if(p->LPSent < p->LPAvail)
             {
-              sendto(sock, cur->data, DATA_SIZE, 0,
+              spiffy_sendto(sock, cur->data, DATA_SIZE, 0,
                      (struct sockaddr*)(&p->addr), sizeof(p->addr));
-              //clock_gettime(CLOCK_MONOTONIC, &p->start_time);
+              clock_gettime(CLOCK_MONOTONIC, &p->start_time);
 
 #ifdef DEBUG
               if (debug & DEBUG_SOCKETS)
@@ -410,7 +426,7 @@ void sliding_send(peer* p, int sock)
         }
       else        // Any other packet
         {
-          sendto(sock, cur->data, DATA_SIZE, 0,
+          spiffy_sendto(sock, cur->data, DATA_SIZE, 0,
                  (struct sockaddr*)(&p->addr), sizeof(p->addr));
 
 #ifdef DEBUG
@@ -492,6 +508,24 @@ int HT_count(chunk_table* table)
 {
   return HASH_COUNT(table);
 }
+
+void clean_table(chunk_table* table)
+{
+  chunk_table *cur, *tmp;
+
+  HASH_ITER(hh, table, cur, tmp)
+    {
+      HASH_DEL(table, cur); /* Delete current entry */
+
+      /* Free memory */
+      if(cur->data)
+        {
+          delete_bytebuf(cur->data);
+          free(cur);
+        }
+    }
+}
+
 /*
   Notes:
 

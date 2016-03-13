@@ -96,4 +96,5 @@ void sliding_send(peer* p, int sock);
 void choose_peer();
 chunk_table* duptable(chunk_table* src);
 
+void clean_table(chunk_table* table);
 #endif
