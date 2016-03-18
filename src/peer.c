@@ -8,6 +8,32 @@
 
 #include "peer.h"
 
+/*************************************
+  Congestion Control: To-Do
+  *************************************
+
+TODO: computeRTT(peer* p, struct timespec newRTT);
+
+This function take in a peer and a new round trip time and
+computes the a new estimated rtt, using:
+
+EstimatedRTT = alpha * EstimatedRTT + (1 - alpha) * SampleRTT
+,where alpha is between 0.8 to 0.9.
+
+TODO: Modify sliding_send: every time a peer timed out, recalculate
+congestion window size.
+
+TODO: Modify parse_data: everytime we get an ACK, adjust congestion window
+depending on ssthresh or not.
+
+TODO: Graphing window size.
+Print:
+-ID of the connection
+-time in ms since peer has been running
+-window size
+
+*/
+
 /* Globals */
 
 peer*        peer_list = NULL;      // Provided in argv
@@ -93,12 +119,13 @@ void peer_run(bt_config_t *config) {
   spiffy_init(config->identity, (struct sockaddr *)&myaddr, sizeof(myaddr));
 
   struct timeval tv;
-  tv.tv_sec  = 0; // 3 seconds in the beginning
-  tv.tv_usec = 500000;
+  tv.tv_sec  = 0;
+  tv.tv_usec = 500000; // half a second
 
   while (1) {
     int nfds;
     peer* p; peer* tmp;
+    struct timespec max;
 
     FD_ZERO(&readfds);
     FD_SET(STDIN_FILENO, &readfds);
@@ -130,7 +157,7 @@ void peer_run(bt_config_t *config) {
     }
 
     /* Insert code here to update 'tv' */
-    tv.tv_sec = 0; // 3 seconds
+    tv.tv_sec = 0;
     tv.tv_usec = 500000;
   }
 }
@@ -335,6 +362,12 @@ void convert_LL2HT(bt_peer_t* ll_peers, peer** ht_peers, short myid)
       bzero(&(tmppeer->start_time), sizeof(tmppeer->start_time));
       tmppeer->ttl = 0;
 
+      tmppeer->window   = 1;
+      tmppeer->ssthresh = 64;
+
+      tmppeer->rtt.tv_sec = 0;
+      tmppeer->rtt.tv_usec = 250000;
+
       HASH_ADD_STR( *ht_peers, key, tmppeer );
     }
 }
@@ -422,12 +455,6 @@ void sliding_send(peer* p, int sock)
               choose_another(p); /* Choose some other peer */
             }
 
-          /* if(p->needy) /\* I am sending DATA to this peer *\/ */
-          /*   { */
-          /*     remove_ll(p->tosend); */
-          /*     p->tosend = NULL; */
-          /*   } */
-
           /* Free up this peer's resources, he's dead */
           remove_ll(p->tosend);
           p->tosend = NULL;
@@ -508,6 +535,7 @@ void sliding_send(peer* p, int sock)
           cur = p->tosend->first;
         }
     }
+
 }
 
 

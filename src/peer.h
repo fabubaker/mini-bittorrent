@@ -80,6 +80,12 @@ struct peer {
   struct timespec    start_time;
   int                ttl;
 
+  /* Congestion control */
+
+  int                window;
+  int                ssthresh;
+  struct timespec    rtt;
+
   UT_hash_handle     hh;
 
 };
