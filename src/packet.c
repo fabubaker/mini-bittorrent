@@ -534,6 +534,7 @@ void parse_data(packet_info* packetinfo, peer* p)
       p->LPRecv = seqNumber;
 
       if(find->data->pos == CHUNK_SIZE) { //Complete Chunk!
+
         find->gotcha = 1;
         p->busy = 0;
         p->LPRecv = 0; // Reset state.
@@ -613,7 +614,7 @@ void save2file(chunk_table* chunk)
 {
   FILE* fp;
 
-  fp = fopen(output_file, "a");
+  fp = fopen(output_file, "r+");
 
   fseek(fp, chunk->id * CHUNK_SIZE, SEEK_SET);
 

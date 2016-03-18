@@ -93,8 +93,8 @@ void peer_run(bt_config_t *config) {
   spiffy_init(config->identity, (struct sockaddr *)&myaddr, sizeof(myaddr));
 
   struct timeval tv;
-  tv.tv_sec  = 1; // 3 seconds in the beginning
-  tv.tv_usec = 0;
+  tv.tv_sec  = 0; // 3 seconds in the beginning
+  tv.tv_usec = 500000;
 
   while (1) {
     int nfds;
@@ -130,8 +130,8 @@ void peer_run(bt_config_t *config) {
     }
 
     /* Insert code here to update 'tv' */
-    tv.tv_sec = 1; // 3 seconds
-    tv.tv_usec = 0;
+    tv.tv_sec = 0; // 3 seconds
+    tv.tv_usec = 500000;
   }
 }
 
@@ -220,6 +220,7 @@ void process_inbound_udp(int sock) {
 void process_get(char *chunkfile, char *outputfile) {
   peer* find; chunk_table* find2;
   peer* tmp ; chunk_table* tmp2;  ll* llget = create_ll();
+  long long unsigned filesize = 0;
 
   output_file = calloc(1, strlen(outputfile)+1);
   strcpy(output_file, outputfile);
@@ -228,6 +229,11 @@ void process_get(char *chunkfile, char *outputfile) {
   strcpy(get_chunk_file, chunkfile);
 
   make_chunktable(chunkfile, &get_chunks, 2);
+
+  filesize = CHUNK_SIZE * HASH_COUNT(get_chunks);
+  FILE *fp = fopen(outputfile, "w");
+  ftruncate(fileno(fp), filesize);
+  fclose(fp);
 
   /* Iterate through all the chunks to get and create a linked list */
   HASH_ITER(hh, get_chunks, find2, tmp2) {
@@ -405,7 +411,7 @@ void sliding_send(peer* p, int sock)
     (now.tv_nsec - p->start_time.tv_nsec) / 1000000; // Convert to ms
 
   //  Check if this peer timed out.
-  if(diff > 1000) // ms
+  if(diff > 500) // ms
     {
       p->ttl++;
 

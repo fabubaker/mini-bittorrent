@@ -31,23 +31,23 @@ make-chunks: $(MK_CHUNK_OBJS)
 
 # Debugging utility code
 
-#test:
-#	./peer -p ./example/test0/nodes.map -c ./example/test0/A.haschunks -f ./example/test0/C.chunks -m 4 -i 1 -d 6
-
-#test2:
-#	./peer -p ./example/test0/nodes.map -c ./example/test0/B.haschunks -f ./example/test0/C.chunks -m 4 -i 2 -d 6
-
 test:
-	./peer -p ./src/example/test1/nodes.map -c ./src/example/test1/A.chunks -f ./src/example/test1/E.masterchunks -m 10 -i 1 -d 6
+	./peer -p ./example/test0/nodes.map -c ./example/test0/A.haschunks -f ./example/test0/C.chunks -m 4 -i 1 -d 6
 
 test2:
-	./peer -p ./src/example/test1/nodes.map -c ./src/example/test1/B.chunks -f ./src/example/test1/E.masterchunks -m 10 -i 2 -d 6
+	./peer -p ./example/test0/nodes.map -c ./example/test0/B.haschunks -f ./example/test0/C.chunks -m 4 -i 2 -d 6
+
+#test:
+#	./peer -p ./src/example/test2/nodes.map -c ./src/example/test2/A.chunks -f ./src/example/test2/E.masterchunks -m 10 -i 1 -d 6
+
+#test2:
+#	./peer -p ./src/example/test2/nodes.map -c ./src/example/test2/B.chunks -f ./src/example/test2/E.masterchunks -m 10 -i 2 -d 6
 
 test3:
-	./peer -p ./src/example/test1/nodes.map -c ./src/example/test1/C.chunks -f ./src/example/test1/E.masterchunks -m 10 -i 3 -d 6
+	./peer -p ./src/example/test2/nodes.map -c ./src/example/test2/C.chunks -f ./src/example/test2/E.masterchunks -m 10 -i 3 -d 6
 
 test4:
-	./peer -p ./src/example/test1/nodes.map -c ./src/example/test1/D.chunks -f ./src/example/test1/E.masterchunks -m 10 -i 4 -d 6
+	./peer -p ./src/example/test2/nodes.map -c ./src/example/test2/D.chunks -f ./src/example/test2/E.masterchunks -m 10 -i 4 -d 6
 
 test5:
 	./peer -p ./src/example/test0/nodes.map -c ./src/example/test0/A.haschunks -f ./src/example/test0/C.chunks -m 10 -i 1 -d 6
