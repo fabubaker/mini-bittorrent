@@ -585,7 +585,8 @@ void parse_data(packet_info* packetinfo, peer* p)
             p->rttcnt = 0;
           }
         }
-
+        genGraph(p);
+        
         p->LPAcked = ackNumber;
         p->LPAvail = p->LPAcked + 8;
       }

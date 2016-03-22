@@ -53,11 +53,14 @@ size_t       finished = 0;          // Keep track of completed chunks.
 size_t       debugcount = 0;
 
 struct timespec    inception;
+static const char *graph_file = "problem2-peer.txt";
+FILE *graphFP;
 
 /* Definitions */
 
 int main(int argc, char **argv)
 {
+  graphFP = fopen(graph_file, "w");
   bt_config_t config;
   clock_gettime(CLOCK_MONOTONIC, &inception);
   bt_init(&config, argc, argv);
@@ -84,6 +87,20 @@ int main(int argc, char **argv)
 
   peer_run(&config);
   return 0;
+}
+
+void genGraph(peer *p){
+  char line[512];
+  bzero(line, 512);
+  struct timespec current;
+  clock_gettime(CLOCK_MONOTONIC, &current);
+
+  unsigned long long int time_since = 
+    1000 * (current.tv_sec - inception.tv_sec) +
+    (current.tv_nsec - inception.tv_nsec) / 1000000; 
+
+  sprintf(line, "%d\t%llu\t%d\n", p->id, time_since, p->window);
+  fflush(graphFP);
 }
 
 //Compute RTT.
@@ -507,7 +524,7 @@ void sliding_send(peer* p, int sock)
           p->window     = 1;
           p->ssthresh   = 64;
           p->rtt.tv_sec = 0;
-          p->rtt.tv_usec= 250000;
+          p->rtt.tv_nsec= 250000;
           return;
         }
 
