@@ -83,6 +83,7 @@ struct peer {
   /* Congestion control */
 
   int                window;
+  int                rttcnt;
   int                ssthresh;
   struct timespec    rtt;
 
@@ -97,6 +98,9 @@ void peer_run(bt_config_t *config);
 void process_inbound_udp(int sock);
 void process_get(char *chunkfile, char *outputfile);
 void handle_user_input(char *line, void *cbdata);
+  struct timespec    rtt;
+
+  UT_hash_handle     hh;
 
 void global_populate(bt_config_t* config);
 void convert_LL2HT(bt_peer_t* ll_peers, peer** ht_peers, short myid);
