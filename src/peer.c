@@ -12,7 +12,7 @@
   Congestion Control: To-Do
   *************************************
 
-TODO: computeRTT(peer* p, struct timespec newRTT);
+TODO: computeRTT(peer* p); check
 
 This function take in a peer and a new round trip time and
 computes the a new estimated rtt, using:
@@ -52,12 +52,14 @@ size_t       finished = 0;          // Keep track of completed chunks.
 
 size_t       debugcount = 0;
 
+struct timespec    inception;
+
 /* Definitions */
 
 int main(int argc, char **argv)
 {
   bt_config_t config;
-
+  clock_gettime(CLOCK_MONOTONIC, &inception);
   bt_init(&config, argc, argv);
 
   DPRINTF(DEBUG_INIT, "peer.c main beginning\n");
@@ -82,6 +84,25 @@ int main(int argc, char **argv)
 
   peer_run(&config);
   return 0;
+}
+
+//Compute RTT.
+void computeRTT(peer *p){
+  struct timespec current;
+  double alpha = 0.875;
+  clock_gettime(CLOCK_MONOTONIC, &current);
+
+  long long unsigned int sample =
+    1000 * (current.tv_sec - p->start_time.tv_sec) +
+    (current.tv_nsec - p->start_time.tv_nsec) / 1000000; 
+
+  long long unsigned int expected = 
+    1000 * (p->rtt.tv_sec) + (p->rtt.tv_nsec) / 1000000; 
+
+  long long unsigned int rttVal = alpha * expected + (1 - alpha) * sample;
+
+  p->rtt.tv_sec = rttVal / 1000;
+  p->rtt.tv_nsec = (rttVal % 1000) * 1000000;
 }
 
 /**************************************************************/
@@ -366,7 +387,7 @@ void convert_LL2HT(bt_peer_t* ll_peers, peer** ht_peers, short myid)
       tmppeer->ssthresh = 64;
 
       tmppeer->rtt.tv_sec = 0;
-      tmppeer->rtt.tv_usec = 250000;
+      tmppeer->rtt.tv_nsec = 250000;
 
       HASH_ADD_STR( *ht_peers, key, tmppeer );
     }
@@ -455,7 +476,7 @@ void sliding_send(peer* p, int sock)
               choose_another(p); /* Choose some other peer */
             }
 
-          /* Free up this peer's resources, he's dead */
+          /* Free up this peer's resources, he's dead lol */
           remove_ll(p->tosend);
           p->tosend = NULL;
 
@@ -475,6 +496,11 @@ void sliding_send(peer* p, int sock)
           p->ttl        = 0;
           return;
         }
+
+      /* Calculate new ssthresh */
+      p->ssthresh = p->window / 2;
+      if(p->ssthresh < 2) p->ssthresh = 2;
+      p->window = 1;
 
       /* Timed out, we need to resend packets */
       p->LPSent = p->LPAcked;
@@ -537,7 +563,6 @@ void sliding_send(peer* p, int sock)
     }
 
 }
-
 
 void choose_peer()
 {
@@ -644,25 +669,3 @@ void choose_another(peer* bad)
 
   /* choose_peer() will automatically select another peer */
 }
-
-
-/*
-  Notes:
-
-  The other tactic (much more sane) is to avoid the mess with signals and
-  setitimer completely. setitimer is seriously legacy and causes problems for
-  all sorts of things (eg. it can cause functions like getaddrinfo to hang, a
-  bug that still hasn't been fixed in glibc
-  (http://www.cygwin.org/frysk/bugzilla/show_bug.cgi?id=15819). Signals are bad
-  for your health. So the "normal" tactic is to use the timeout argument to
-  select. You have a linked list of timers, objects you use to manager periodic
-  events in your code. When you call select, you use as the timeout the shortest
-  of your remaining timers. When the select call returns, you check if any
-  timers are expired and call the timer handler as well as the handlers for your
-  fd events. That's a standard application event loop. This way your loop code
-  so you can listen for timer-driven events as well as fd-driven events. Pretty
-  much every application on your system uses some variant on this mechanism.
-
-  Use signalfd
-
-*/

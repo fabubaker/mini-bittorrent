@@ -6,15 +6,6 @@
 /* @author Malek Anabtawi, Fadhil Abubaker              */
 /********************************************************/
 
-/*
- * TODO: We need to retransmit a GET if the peer hasn't responded to us.
- * Maybe use the peer->busy field? Set it only if we get the first DATA
- * packet from that peer?
- *
- * TODO: Timeouts.
- *
- */
-
 #include "packet.h"
 
 /* Globals */
@@ -583,6 +574,16 @@ void parse_data(packet_info* packetinfo, peer* p)
           {
             delete_node(p->tosend);
           }
+
+        if(p->window < p->ssthresh){ //slow start
+          p->window++;
+        } else { //Congestion avoidance
+          p->rttcnt++;
+          if(p->rttcnt == p->window){
+            p->window++;
+            p->rttcnt = 0;
+          }
+        }
 
         p->LPAcked = ackNumber;
         p->LPAvail = p->LPAcked + 8;
