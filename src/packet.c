@@ -585,8 +585,9 @@ void parse_data(packet_info* packetinfo, peer* p)
             p->rttcnt = 0;
           }
         }
-        genGraph(p);
-        
+        gen_graph(p);
+        if(!p->ttl) computeRTT(p); //Karn Partridge
+
         p->LPAcked = ackNumber;
         p->LPAvail = p->LPAcked + 8;
       }
