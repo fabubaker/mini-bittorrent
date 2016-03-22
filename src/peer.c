@@ -89,7 +89,7 @@ int main(int argc, char **argv)
   return 0;
 }
 
-void genGraph(peer *p){
+void gen_graph(peer *p){
   char line[512];
   bzero(line, 512);
   struct timespec current;
@@ -491,8 +491,11 @@ void sliding_send(peer* p, int sock)
     1000 * (now.tv_sec - p->start_time.tv_sec) +
     (now.tv_nsec - p->start_time.tv_nsec) / 1000000; // Convert to ms
 
+  long long unsigned int timeout = 
+  1000 * (p->rtt.tv_sec) + (p->rtt.tv_nsec) / 1000000;
+
   //  Check if this peer timed out.
-  if(diff > 500) // ms
+  if(diff > 2*timeout) // ms
     {
       p->ttl++;
 
