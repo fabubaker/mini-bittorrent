@@ -572,6 +572,7 @@ void parse_data(packet_info* packetinfo, peer* p)
             /* Resend the lost packets */
             /* I guess this happens automatically
              * because I don't delete any nodes? */
+            /*  */
           }
       }
     else

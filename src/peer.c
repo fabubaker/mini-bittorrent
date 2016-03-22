@@ -127,6 +127,9 @@ void peer_run(bt_config_t *config) {
     peer* p; peer* tmp;
     struct timespec max;
 
+    max.tv_sec = 0;
+    max.tv_nsec = 0;
+
     FD_ZERO(&readfds);
     FD_SET(STDIN_FILENO, &readfds);
     FD_SET(sock, &readfds);
@@ -154,11 +157,18 @@ void peer_run(bt_config_t *config) {
      * a sliding window protocol. */
     HASH_ITER(hh, peer_list, p, tmp) {
       sliding_send(p, sock);
+
+      if(p->rtt.tv_sec >= max.tv_sec &&
+         p->rtt.tv_nsec >= max.tv_nsec)
+        {
+          max.tv_sec  = p->rtt.tv_sec;
+          max.tv_nsec = p->rtt.tv_nsec;
+        }
     }
 
     /* Insert code here to update 'tv' */
-    tv.tv_sec = 0;
-    tv.tv_usec = 500000;
+    tv.tv_sec  = max.tv_sec;
+    tv.tv_usec = max.tv_nsec/1000;
   }
 }
 
@@ -473,6 +483,10 @@ void sliding_send(peer* p, int sock)
           p->busy       = 0;
           p->needy      = 0;
           p->ttl        = 0;
+          p->window     = 1;
+          p->ssthresh   = 64;
+          p->rtt.tv_sec = 0;
+          p->rtt.tv_usec= 250000;
           return;
         }
 
