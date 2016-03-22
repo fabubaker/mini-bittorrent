@@ -89,15 +89,15 @@ int main(int argc, char **argv)
   return 0;
 }
 
-void genGraph(peer *p){
+void gen_graph(peer *p){
   char line[512];
   bzero(line, 512);
   struct timespec current;
   clock_gettime(CLOCK_MONOTONIC, &current);
 
-  unsigned long long int time_since = 
+  unsigned long long int time_since =
     1000 * (current.tv_sec - inception.tv_sec) +
-    (current.tv_nsec - inception.tv_nsec) / 1000000; 
+    (current.tv_nsec - inception.tv_nsec) / 1000000;
 
   sprintf(line, "%d\t%llu\t%d\n", p->id, time_since, p->window);
   fflush(graphFP);
@@ -111,10 +111,10 @@ void computeRTT(peer *p){
 
   long long unsigned int sample =
     1000 * (current.tv_sec - p->start_time.tv_sec) +
-    (current.tv_nsec - p->start_time.tv_nsec) / 1000000; 
+    (current.tv_nsec - p->start_time.tv_nsec) / 1000000;
 
-  long long unsigned int expected = 
-    1000 * (p->rtt.tv_sec) + (p->rtt.tv_nsec) / 1000000; 
+  long long unsigned int expected =
+    1000 * (p->rtt.tv_sec) + (p->rtt.tv_nsec) / 1000000;
 
   long long unsigned int rttVal = alpha * expected + (1 - alpha) * sample;
 

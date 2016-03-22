@@ -111,4 +111,5 @@ chunk_table* duptable(chunk_table* src);
 
 void clean_table(chunk_table* table);
 void choose_another(peer* bad);
+void gen_graph(peer *p);
 #endif
