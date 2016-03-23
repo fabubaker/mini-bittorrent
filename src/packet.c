@@ -560,10 +560,8 @@ void parse_data(packet_info* packetinfo, peer* p)
 
         if(p->dupCounter >= 3)
           {
-            /* Resend the lost packets */
-            /* I guess this happens automatically
-             * because I don't delete any nodes? */
-            /*  */
+            /* Begin fast retransmit */
+            //p->LPSent = p->LPAcked;
           }
       }
     else
@@ -576,11 +574,11 @@ void parse_data(packet_info* packetinfo, peer* p)
             delete_node(p->tosend);
           }
 
-        if(p->window < p->ssthresh){ //slow start
+        if(p->window < p->ssthresh) { //slow start
           p->window++;
         } else { //Congestion avoidance
           p->rttcnt++;
-          if(p->rttcnt == p->window){
+          if(p->rttcnt >= p->window){
             p->window++;
             p->rttcnt = 0;
           }
@@ -589,7 +587,7 @@ void parse_data(packet_info* packetinfo, peer* p)
         if(!p->ttl) computeRTT(p); //Karn Partridge
 
         p->LPAcked = ackNumber;
-        p->LPAvail = p->LPAcked + 8;
+        p->LPAvail = p->LPAcked + p->window;
       }
 
     if(p->LPAcked == 512) // We send 512 packets of a 1000 bytes each.

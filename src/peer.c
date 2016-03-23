@@ -100,6 +100,7 @@ void gen_graph(peer *p){
     (current.tv_nsec - inception.tv_nsec) / 1000000;
 
   sprintf(line, "%d\t%llu\t%d\n", p->id, time_since, p->window);
+  fwrite(line, 1, strlen(line), graphFP);
   fflush(graphFP);
 }
 
@@ -207,6 +208,12 @@ void peer_run(bt_config_t *config) {
     /* Insert code here to update 'tv' */
     tv.tv_sec  = max.tv_sec;
     tv.tv_usec = max.tv_nsec/1000;
+
+    if(tv.tv_sec == 0 && tv.tv_usec == 0)
+      {
+        tv.tv_sec  = 0;
+        tv.tv_usec = 500000;
+      }
   }
 }
 
@@ -289,6 +296,7 @@ void process_inbound_udp(int sock) {
       output_file = NULL;
 
       finished = 0;
+      exit(0);
     }
 }
 
@@ -414,7 +422,7 @@ void convert_LL2HT(bt_peer_t* ll_peers, peer** ht_peers, short myid)
       tmppeer->ssthresh = 64;
 
       tmppeer->rtt.tv_sec = 0;
-      tmppeer->rtt.tv_nsec = 250000;
+      tmppeer->rtt.tv_nsec = 250000000;
 
       HASH_ADD_STR( *ht_peers, key, tmppeer );
     }
@@ -491,7 +499,7 @@ void sliding_send(peer* p, int sock)
     1000 * (now.tv_sec - p->start_time.tv_sec) +
     (now.tv_nsec - p->start_time.tv_nsec) / 1000000; // Convert to ms
 
-  long long unsigned int timeout = 
+  long long unsigned int timeout =
   1000 * (p->rtt.tv_sec) + (p->rtt.tv_nsec) / 1000000;
 
   //  Check if this peer timed out.
@@ -527,26 +535,28 @@ void sliding_send(peer* p, int sock)
           p->window     = 1;
           p->ssthresh   = 64;
           p->rtt.tv_sec = 0;
-          p->rtt.tv_nsec= 250000;
+          p->rtt.tv_nsec= 250000000;
           return;
         }
 
       /* Calculate new ssthresh */
       p->ssthresh = p->window / 2;
       if(p->ssthresh < 2) p->ssthresh = 2;
+      p->rttcnt = 0;
       p->window = 1;
+      gen_graph(p);
 
       /* Timed out, we need to resend packets */
       p->LPSent = p->LPAcked;
 
       /* OR, we may need to resend GET */
-      if(p->busy && p->LPRecv == 0)
-        {
-          ll* llget = create_ll();
-          add_node(llget, p->chunk, HASH_SIZE, 0);
-          p->tosend = append(gen_WHOIGET(llget, 2), p->tosend);
-          free(llget);
-        }
+      /* if(p->busy && p->LPRecv == 0) */
+      /*   { */
+      /*     ll* llget = create_ll(); */
+      /*     add_node(llget, p->chunk, HASH_SIZE, 0); */
+      /*     p->tosend = append(gen_WHOIGET(llget, 2), p->tosend); */
+      /*     free(llget); */
+      /*   } */
     }
 
   cur = p->tosend->first;
