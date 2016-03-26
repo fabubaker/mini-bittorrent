@@ -538,6 +538,7 @@ void parse_data(packet_info* packetinfo, peer* p)
       if(find->data->pos == CHUNK_SIZE) { //Complete Chunk!
 
         find->gotcha = 1;
+        find->requested = 1;
         p->busy = 0;
         p->LPRecv = 0; // Reset state.
 
