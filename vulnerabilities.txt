@@ -1,13 +1,15 @@
-/******************************************************************************************/
-/* @file vulnerabilities.txt                                                              */
-/*                                                                                        */
-/* @brief Contains a list of vulnerabilities present in the current version of project-2. */
-/*                                                                                        */
-/* @author Fadhil Abubaker, Malek Anabtawi                                                */
-/******************************************************************************************/
+@file   vulnerabilities.txt
+@author Malek Anabtawi, Fadhil Abubaker
 
-1. packet.c: 83
+	1. Autolab timeouts when we submit our code.
+	2. Does not handle malicous peers perfectly.
+		a. Sending illegal packets (no DENIED implementation).
+		b. 
+	3. Not checking hash of complete chunk. 
+	4. Timeout values are not precise enough (milliseconds might be too little).
+	5. Variable names don't use camel-case.
+	6. Some leaked/lost memory.
 
-"int numPacket = (numHashes / MAX_NUM_HASH) + 1;"
+To be frank, its only vulnerability is that it's invulnerable.
 
-if numHashes = MAX_NUM_HASH, we get an incorrect value for numPacket.
+
