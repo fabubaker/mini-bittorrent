@@ -98,6 +98,8 @@ void computeRTT(peer *p){
 
   p->rtt.tv_sec = rttVal / 1000;
   p->rtt.tv_nsec = (rttVal % 1000) * 1000000;
+
+  //  printf("new RTT: %llu \n", rttVal);
 }
 
 /**************************************************************/
@@ -468,12 +470,23 @@ void sliding_send(peer* p, int sock)
 
   clock_gettime(CLOCK_MONOTONIC, &now);
 
+  /* long long unsigned int now1 = */
+  /*   1000 * (now.tv_sec) + (now.tv_nsec) / 1000000; */
+
+  /* long long unsigned int start1 = */
+  /*   1000 * (p->start_time.tv_sec) + (p->start_time.tv_nsec) / 1000000; */
+
   long long unsigned int diff =
     1000 * (now.tv_sec - p->start_time.tv_sec) +
     (now.tv_nsec - p->start_time.tv_nsec) / 1000000; // Convert to ms
 
   long long unsigned int timeout =
-  1000 * (p->rtt.tv_sec) + (p->rtt.tv_nsec) / 1000000;
+    2 * (1000 * (p->rtt.tv_sec) + (p->rtt.tv_nsec) / 1000000);
+
+  /* printf("Start: %llu\n", start1); */
+  /* printf("Now: %llu\n", now1); */
+  /* printf("Diff: %llu\n", diff); */
+  /* printf("Timeout: %llu\n", timeout); */
 
   //  Check if this peer timed out.
   if(diff > 2*timeout) // ms

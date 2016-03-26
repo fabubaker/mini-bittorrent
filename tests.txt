@@ -1,0 +1,9 @@
+@file   tests.txt
+@author Fadhil Abubaker, Malek Anabtawi
+
+At the end of each .c file, there is a main routine with small test cases. These
+were our unit tests. For files such as ds.c that contained an in-house
+implementation of a data structure, these unit tests tested core functionality.
+
+For testing the peer executable as a whole, extra test cases similiar to that in the
+handout were created. The provided Makefile contains test targets for these cases.
