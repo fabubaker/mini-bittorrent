@@ -68,6 +68,7 @@ void mmemcat(byte_buf *tempRequest, uint8_t *binaryNumber, int size);
 void mmemclear(byte_buf *buf);
 
 void dec2hex2binary(int decimalNumber, int bytesNeeded, uint8_t* binaryNumber);
+int get_seqno(uint8_t* packet);
 
 ll* gen_WHOIGET(ll *list, int packetCode);
 ll* gen_DATA(uint8_t *chunkHash);

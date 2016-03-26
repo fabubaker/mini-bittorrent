@@ -8,31 +8,6 @@
 
 #include "peer.h"
 
-/*************************************
-  Congestion Control: To-Do
-  *************************************
-
-TODO: computeRTT(peer* p); check
-
-This function take in a peer and a new round trip time and
-computes the a new estimated rtt, using:
-
-EstimatedRTT = alpha * EstimatedRTT + (1 - alpha) * SampleRTT
-,where alpha is between 0.8 to 0.9.
-
-TODO: Modify sliding_send: every time a peer timed out, recalculate
-congestion window size.
-
-TODO: Modify parse_data: everytime we get an ACK, adjust congestion window
-depending on ssthresh or not.
-
-TODO: Graphing window size.
-Print:
--ID of the connection
--time in ms since peer has been running
--window size
-
-*/
 
 /* Globals */
 
@@ -51,6 +26,7 @@ char*        get_chunk_file;        // Provided in STDIN
 size_t       finished = 0;          // Keep track of completed chunks.
 
 size_t       debugcount = 0;
+int          sock;
 
 struct timespec    inception;
 static const char *graph_file = "problem2-peer.txt";
@@ -66,12 +42,6 @@ int main(int argc, char **argv)
   bt_init(&config, argc, argv);
 
   DPRINTF(DEBUG_INIT, "peer.c main beginning\n");
-
-#ifdef TESTING
-  config.identity = 1; // your group number here
-  strcpy(config.chunk_file, "chunkfile");
-  strcpy(config.has_chunk_file, "haschunks");
-#endif
 
   /* Parse the cmd line tokens */
   bt_parse_command_line(&config);
@@ -89,6 +59,10 @@ int main(int argc, char **argv)
   return 0;
 }
 
+/*********************************************************/
+/* @brief Given a peer, outputs its sliding window size. */
+/* @param p - The peer to graph                          */
+/*********************************************************/
 void gen_graph(peer *p){
   char line[512];
   bzero(line, 512);
@@ -99,12 +73,15 @@ void gen_graph(peer *p){
     1000 * (current.tv_sec - inception.tv_sec) +
     (current.tv_nsec - inception.tv_nsec) / 1000000;
 
-  sprintf(line, "%d\t%llu\t%d\n", p->id, time_since, p->window);
+  sprintf(line, "F%d\t%llu\t%d\n", p->id, time_since, p->window);
   fwrite(line, 1, strlen(line), graphFP);
   fflush(graphFP);
 }
 
-//Compute RTT.
+/***************************************************************************/
+/* @brief Given a peer, computes new RTT given a sample RTT and an old RTT */
+/* @param p - The peer to compute RTT for.                                 */
+/***************************************************************************/
 void computeRTT(peer *p){
   struct timespec current;
   double alpha = 0.875;
@@ -128,7 +105,7 @@ void computeRTT(peer *p){
 /* @param config The config file of the peer.                 */
 /**************************************************************/
 void peer_run(bt_config_t *config) {
-  int sock;
+  //  int sock;
   struct sockaddr_in myaddr;
   fd_set readfds;
   struct user_iobuf *userbuf;
@@ -146,7 +123,6 @@ void peer_run(bt_config_t *config) {
 
   bzero(&myaddr, sizeof(myaddr));
   myaddr.sin_family = AF_INET;
-  //myaddr.sin_addr.s_addr = htonl(INADDR_ANY);
   inet_aton("127.0.0.1", (struct in_addr *)&myaddr.sin_addr.s_addr);
   myaddr.sin_port = htons(config->myport);
 
@@ -205,7 +181,7 @@ void peer_run(bt_config_t *config) {
         }
     }
 
-    /* Insert code here to update 'tv' */
+    /* Update timeouts based on new RTT */
     tv.tv_sec  = max.tv_sec;
     tv.tv_usec = max.tv_nsec/1000;
 
@@ -217,9 +193,11 @@ void peer_run(bt_config_t *config) {
   }
 }
 
-/*
-@brief Process incoming UDP data and store it in the peer state
-*/
+
+/*******************************************************************/
+/* @brief Process incoming UDP data and store it in the peer state */
+/* @param sock - The socket from which to read data.               */
+/*******************************************************************/
 void process_inbound_udp(int sock) {
 #define BUFLEN 1500
   peer* find;
@@ -273,16 +251,12 @@ void process_inbound_udp(int sock) {
 
   /* If there is data, parse it and create
    * a linked list of packets to be sent to
-   * that peer.
-   */
+   * that peer. */
   parse_data(&packetinfo, find);
 
   /* Everytime a chunk has been fully received,
    * delete it from the hash table, but only
-   * after writing its data to the file.
-   * Use HASH_COUNT to determine if there are any chunks
-   * left to be received.
-   */
+   * after writing its data to the file. */
   if(HASH_COUNT(get_chunks) == finished && get_chunks != NULL)
     {
       printf("GOT %s\n", get_chunk_file);
@@ -296,7 +270,6 @@ void process_inbound_udp(int sock) {
       output_file = NULL;
 
       finished = 0;
-      exit(0);
     }
 }
 
@@ -372,7 +345,6 @@ void global_populate(bt_config_t* config)
   make_chunktable(config->has_chunk_file, &has_chunks, 1);
 }
 
-
 /**************************************************************************/
 /* @brief Takes a linked list containing all the peers and converts       */
 /*        it into a hash table with the string "address:port" as the key. */
@@ -410,7 +382,7 @@ void convert_LL2HT(bt_peer_t* ll_peers, peer** ht_peers, short myid)
 
       tmppeer->LPAcked    = 0;
       tmppeer->LPSent     = 0;
-      tmppeer->LPAvail    = 8;
+      tmppeer->LPAvail    = 1;
       tmppeer->LPRecv     = 0;
 
       tmppeer->dupCounter = 0;
@@ -489,6 +461,7 @@ void sliding_send(peer* p, int sock)
 {
   node* cur;
   struct timespec now;
+  int seqno = 0;
 
   if(!p->tosend)
     return;
@@ -505,6 +478,7 @@ void sliding_send(peer* p, int sock)
   //  Check if this peer timed out.
   if(diff > 2*timeout) // ms
     {
+      //printf("TIMED OUT!!\n");
       p->ttl++;
 
       if(p->ttl == 5) // DEAD
@@ -526,7 +500,7 @@ void sliding_send(peer* p, int sock)
 
           p->LPAcked    = 0;
           p->LPSent     = 0;
-          p->LPAvail    = 8;
+          p->LPAvail    = 1;
           p->LPRecv     = 0;
           p->dupCounter = 0;
           p->busy       = 0;
@@ -544,7 +518,10 @@ void sliding_send(peer* p, int sock)
       if(p->ssthresh < 2) p->ssthresh = 2;
       p->rttcnt = 0;
       p->window = 1;
-      gen_graph(p);
+
+      /* Do not graph if we are receiving data from this peer */
+      if(p->busy)
+        gen_graph(p);
 
       /* Timed out, we need to resend packets */
       p->LPSent = p->LPAcked;
@@ -565,7 +542,9 @@ void sliding_send(peer* p, int sock)
     {
       if(cur->type == 1) // DATA packet
         {
-          if(p->LPSent < p->LPAvail)
+          seqno = get_seqno(cur->data);
+
+          if(p->LPSent < seqno && seqno <= p->LPAvail)
             {
               spiffy_sendto(sock, cur->data, DATA_SIZE, 0,
                      (struct sockaddr*)(&p->addr), sizeof(p->addr));
@@ -581,9 +560,12 @@ void sliding_send(peer* p, int sock)
                   print_packet(cur->data, SEND);
                 }
 #endif
-
-              p->LPSent++;
+              p->LPSent = seqno;
             }
+
+          if(seqno > p->LPAvail)
+            break;
+
           cur = cur->next;
         }
       else        // Any other packet
@@ -628,11 +610,6 @@ void choose_peer()
 
     if(p->busy) /* Leave him alone */
       continue;
-
-    /* If a non-GET, non-DATA packet is in queue,
-     * try some other time */
-    /* if(p->tosend && p->tosend->first && p->tosend->first->type == 0) */
-    /*   continue; */
 
     /* Iterate through each peer's chunks */
     HASH_ITER(hh, p->has_chunks, find, tmp2) {

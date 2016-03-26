@@ -36,6 +36,9 @@ void remove_ll(ll* list)
       current = next;
     }
 
+  list->count = 0;
+  list->first = NULL;
+  list->last  = NULL;
   free(list);
 }
 
@@ -97,6 +100,13 @@ void delete_node(ll* list)
   free(killme);
 }
 
+void del_all_nodes(ll* list)
+{
+  while(list->count > 0)
+    {
+      delete_node(list);
+    }
+}
 
 /*********************************************************************/
 /* @brief Appends two linked lists. Can even append two linked lists */

@@ -9,7 +9,6 @@
 #include "packet.h"
 
 /* Globals */
-//All of the below appear in peer.c
 
 extern  peer*        peer_list;      // Provided in argv
 
@@ -23,11 +22,15 @@ extern char*        master_data_file;  // Provided in master_chunks file
 extern char*        output_file;       // Provided in STDIN
 
 extern size_t       finished;           // Keep track of completed chunks.
+extern int          sock;
 
-/* @brief Creates a bytebuf struct. The bytebuf's buffer has bufsize bytes allocated.
- *        Note that the bytebuf must be freed outside the function, using delete_bytebuf.
- * @param bufsize: Length of the buf argument.
- */
+
+/*******************************************************************************/
+/* @brief Creates a bytebuf struct. The bytebuf's buffer has bufsize bytes     */
+/*        allocated. Note that the bytebuf must be freed outside the function, */
+/*        using delete_bytebuf.                                                */
+/* @param bufsize: Length of the buf argument.                                 */
+/*******************************************************************************/
 struct byte_buf* create_bytebuf(size_t bufsize)
 {
   struct byte_buf *b;
@@ -183,7 +186,11 @@ void parse_packet(uint8_t *packet, packet_info* myPack){
   delete_bytebuf(tempRequest);
 }
 
-//Test later
+/*******************************************************************/
+/* @brief Generates ACK packets that have a particular ack number. */
+/* @param ackNum - The ack number of the packet.                   */
+/* @param copies - The number of copies to make (for DUPACKS).     */
+/*******************************************************************/
 ll* gen_ACK(int ackNum, int copies){
 
   byte_buf *tempRequest = create_bytebuf(PACKET_LENGTH);
@@ -223,7 +230,6 @@ ll* gen_ACK(int ackNum, int copies){
   return myLL;
 }
 
-//Test later
 /* Generates a complete set of DATA packets for an entire chunk.
  * Arguments:
  *      1. Requests: Array of uint8_ts. Must have space for at least 512 spots.
@@ -459,6 +465,14 @@ void parse_data(packet_info* packetinfo, peer* p)
        If we don't, deny him. eheheh.
        if we do, send it.
     */
+
+    /* Free previous chunk state */
+    del_all_nodes(p->tosend);
+
+    p->LPAcked = 0;
+    p->LPSent  = 0;
+    p->LPAvail = p->LPAcked + p->window;
+
     n = 1;
     for(uint8_t i = 0; i < n; i++) {
       HASH_FIND(hh, has_chunks, packetinfo->body + CHUNK * i, CHUNK, find);
@@ -491,25 +505,22 @@ void parse_data(packet_info* packetinfo, peer* p)
     //  Perform checksum. If passes, good, else, send GET again
     //Send ACK seqNumber, update Last acked.
 
+    /* Ignore DATA packets from peers whom we haven't requested data from */
+    if(!p->busy)
+      break;
+
     seqNumber = (unsigned int) binary2int(packetinfo->sequenceNumber, 4);
     headerLength = binary2int(packetinfo->headerLength, 2);
     totalPacketLength = binary2int(packetinfo->totalPacketLength, 2);
 
-    /* We received a DATA packet, check if there's a GET in front of
-     * the send queue. If there is, delete it. */
-    /* if(p->tosend && p->tosend->first && p->tosend->first->type == 2) */
-    /*   { */
-    /*     delete_node(p->tosend); */
-    /*   } */
-
     /* Check if we received a packet we got before */
-    if (seqNumber <= p->LPRecv) {
+    if (seqNumber <= p->LPRecv && p->LPRecv > 0) {
       p->tosend = append(gen_ACK(p->LPRecv, 1), p->tosend);
       break;
     }
 
-    /* Check if we received an inorder packet  */
-    if(seqNumber > p->LPRecv + 1) {
+    /* Check if we received an out of order packet  */
+    if(seqNumber > p->LPRecv + 1 && p->LPRecv > 0) {
       p->tosend = append(gen_ACK(p->LPRecv, 3), p->tosend);
       break;
     }
@@ -530,7 +541,7 @@ void parse_data(packet_info* packetinfo, peer* p)
         p->busy = 0;
         p->LPRecv = 0; // Reset state.
 
-        /* copying is to ensure consistency within the Hash Table lib */
+        /* Copying is to ensure consistency within the Hash Table lib */
         chunk_table* copy = duptable(find);
 
         HASH_ADD(hh, has_chunks, chunk, CHUNK, copy);
@@ -541,6 +552,9 @@ void parse_data(packet_info* packetinfo, peer* p)
       }
       //Send ACK
       p->tosend = append(gen_ACK(seqNumber, 1), p->tosend);
+
+      if(find->data->pos == CHUNK_SIZE)
+        sliding_send(p, sock); // Send 512th ACK immediately.
     }
 
     break;
@@ -561,7 +575,11 @@ void parse_data(packet_info* packetinfo, peer* p)
         if(p->dupCounter >= 3)
           {
             /* Begin fast retransmit */
-            //p->LPSent = p->LPAcked;
+            p->dupCounter = 0;
+
+            /* Lengthen time since start */
+            p->start_time.tv_sec = 0;
+            p->start_time.tv_nsec = 0;
           }
       }
     else
@@ -595,7 +613,7 @@ void parse_data(packet_info* packetinfo, peer* p)
         // Reset the sliding window state for this peer.
         p->LPAcked = 0;
         p->LPSent  = 0;
-        p->LPAvail = 8;
+        p->LPAvail = p->LPAcked + p->window;
       }
 
     break;
@@ -605,13 +623,13 @@ void parse_data(packet_info* packetinfo, peer* p)
 
     break;
 
-    /*
-      default:
-      //WTF?
-      */
   }
 }
 
+/*****************************************************************/
+/* @brief Given a chunk, save to the output file.                */
+/* @param chunk - The chunk of data to write to the output file. */
+/*****************************************************************/
 void save2file(chunk_table* chunk)
 {
   FILE* fp;
@@ -692,8 +710,6 @@ void print_packet(uint8_t* packet, int i)
 
     }
 
-  //mmemmove(myPack.body, tempRequest, plen - hlen);
-
   printf("\n###############################\n");
   if(i == SEND) printf("Sending packet with contents:\n");
   if(i == RECV) printf("Receiving packet with contents:\n");
@@ -705,7 +721,6 @@ void print_packet(uint8_t* packet, int i)
   printf("Seq     No    : %d\n", binary2int(myPack.sequenceNumber , 4));
   printf("Ack     No    : %d\n", binary2int(myPack.ackNumber , 4));
   printf("Hash    No    : %d\n", numh);
-  //printf("Body          : %d\n", binary2int(myPack.numberHashes , 4));
 
   char hash[45] = {0};
 
@@ -728,6 +743,12 @@ void print_packet(uint8_t* packet, int i)
   delete_bytebuf(tempRequest);
 }
 
+int get_seqno(uint8_t* packet)
+{
+  uint8_t seqno[4] = {0};
+  memmove(seqno, packet + 8, 4);
+  return binary2int(seqno, 4);
+}
 
 /* #ifdef TESTING */
 /* int main(){ */
