@@ -27,20 +27,5 @@ algorithm with alpha = 0.8.
 
 # Authors 
 [Fadhil Abubaker](https://github.com/fabubaker)
+
 [Malek Anabtawi](https://github.com/js2d)
-
-# Sample Output of problem2-peer.txt:
-
-F1	2375	6
-F1	2375	7
-F1	2405	8
-F1	2467	9
-F1	2498	10
-F1	2498	11
-F1	2526	12
-F1	2557	13
-F1	2558	14
-F1	2618	15
-F1	2620	16
-F1	2741	17
-F1	2772	18
