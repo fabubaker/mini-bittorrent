@@ -1,5 +1,8 @@
-mini-p2p
-========
+# mini-p2p
+
+Some time ago, I took [15-441: Computer Networks](https://web2.qatar.cmu.edu/~kharras/courses/15441/#/) and had a lot of fun doing it. This repository contains code for project 2 of that course, titled "Congestion Control with Bittorrent".
+
+# Submission Description
 
 peer.c implements a BitTorrent-like file transfer protocol that runs on top of
 UDP. In order to achieve confident transfer of data, TCP-like reliability and
