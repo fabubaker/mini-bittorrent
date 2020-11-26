@@ -25,7 +25,7 @@ a timeout, and congestion-control protocols kick in to reduce window size and
 reduce network congestion. The rtt is calculated using the Karn-Partridge
 algorithm with alpha = 0.8.
 
-# Authors 
+# Authors
 [Fadhil Abubaker](https://github.com/fabubaker)
 
-[Malek Anabtawi](https://github.com/js2d)
+[Malek Anabtawi](https://github.com/jspro123)
