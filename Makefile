@@ -16,12 +16,15 @@ TESTBINS        = test_debug test_input_buffer
 
 # Explicit build and testing targets
 
-all: ${BINS}
+all: ${BINS} oclean
 
 bt_parse.c: bt_parse.h
 
 clean:
 	rm -f *.o peer
+
+oclean:
+	rm -f *.o
 
 peer: $(OBJS) $(SRCOBJS)
 	$(CC) $(CFLAGS) $(OBJS) $(SRCOBJS) -o $@ $(LDFLAGS)
